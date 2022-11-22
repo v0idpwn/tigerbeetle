@@ -13,5 +13,6 @@ if [[ -z "$BRANCH" ]]; then
     # Otherwise fall back to git rev-parse
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
 fi
+env
 ( cd docs_website && npm install && ./scripts/build.sh "$BRANCH" )
 rm -rf docs_website
