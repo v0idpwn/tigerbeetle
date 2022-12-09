@@ -35,23 +35,20 @@ pub fn main() !void {
 
         const writer = file.writer();
 
-        try writer.print("# {s}\r\n\r\n", .{language.name, language.description});
+        try writer.print("# {s}\r\n\r\n{s}\r\n\r\n", .{language.name, language.description});
 
-        try writer.print("## Installation\r\n\r\n```bash");
+        try writer.print("## Installation\r\n\r\n```bash\r\n{s}```\r\n\r\n", .{language.install_commands});
 
-        try writer.print("{s}\r\n\r\n## Development Setup\r\n\r\n### On Linux and macOS\r\n", .{language.header});
-        // Bash setup
-        try writer.print("```bash\r\n", .{});
-        for (language.developer_setup_bash_commands) |cmd| {
-            try writer.print("$ {s}\r\n", .{cmd});
+        if (language.examples.len != 0) {
+            try writer.print("## Examples\r\n\r\n{s}\r\n\r\n", .{language.examples});
         }
-        try writer.print("```\r\n", .{});
+
+        try writer.print("## Development Setup\r\n\r\n", .{});
+        // Bash setup
+        try writer.print("### On Linux and macOS\r\n\r\n```bash\r\n{s}\r\n```", .{language.developer_setup_bash_commands});
 
         // Windows setup
-        try writer.print("### On Windows\r\n\r\n```powershell\r\n", .{});
-        for (language.developer_setup_windows_commands) |cmd| {
-            try writer.print("$ {s}\r\n", .{cmd});
-        }
+        try writer.print("### On Windows\r\n\r\n```powershell\r\n{s}\r\n```", .{language.developer_setup_windows_commands});
         try writer.print("```\r\n", .{});
     }
 }

@@ -7,11 +7,10 @@ The TigerBeetle client for Go.
 Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
 this repo and subdirectory.
 
-For example:
+## Installation
 
 ```bash
-$ cat test.go
-package main
+printf 'package main
 
 import _ "github.com/tigerbeetledb/tigerbeetle-go"
 import "fmt"
@@ -19,15 +18,14 @@ import "fmt"
 func main() {
   fmt.Println("Import ok!")
 }
+' > test.go
+go mod init tbtest
+go mod tidy
+go build```
 
-$ go mod init tigerbeetle-test
-$ go mod tidy
-$ go build
-$ ./tigerbeetle-test
-Import ok!
-```
+## Examples
 
-## A more real example
+## Basic
 
 See [./samples/basic](./samples/basic) for a Go project
 showing many features of the client.
@@ -35,19 +33,19 @@ showing many features of the client.
 ## Development Setup
 
 ### On Linux and macOS
+
 ```bash
-$ git clone https://github.com/tigerbeetledb/tigerbeetle
-$ cd tigerbeetle/src/clients/go
-$ ./tigerbeetle/scripts/install_zig.sh
-$ ./scripts/rebuild_binaries.sh
-$ ./zgo test
-```
-### On Windows
+git clone https://github.com/tigerbeetledb/tigerbeetle
+cd tigerbeetle/src/clients/go
+./tigerbeetle/scripts/install_zig.sh
+./scripts/rebuild_binaries.sh
+./zgo test
+```### On Windows
 
 ```powershell
-$ git clone https://github.com/tigerbeetledb/tigerbeetle
-$ cd tigerbeetle/src/clients/go
-$ ./tigerbeetle/scripts/install_zig.bat
-$ ./scripts/rebuild_binaries.sh
-$ ./zgo.bat test
-```
+git clone https://github.com/tigerbeetledb/tigerbeetle
+cd tigerbeetle/src/clients/go
+./tigerbeetle/scripts/install_zig.bat
+./scripts/rebuild_binaries.sh
+./zgo.bat test
+``````
