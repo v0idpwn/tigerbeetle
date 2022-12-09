@@ -21,7 +21,8 @@ func main() {
 ' > test.go
 go mod init tbtest
 go mod tidy
-go build```
+go build
+```
 
 ## Examples
 

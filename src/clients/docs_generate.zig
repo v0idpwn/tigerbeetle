@@ -35,20 +35,20 @@ pub fn main() !void {
 
         const writer = file.writer();
 
-        try writer.print("# {s}\r\n\r\n{s}\r\n\r\n", .{language.name, language.description});
+        try writer.print("# {s}\n\n{s}\n\n", .{language.name, language.description});
 
-        try writer.print("## Installation\r\n\r\n```bash\r\n{s}```\r\n\r\n", .{language.install_commands});
+        try writer.print("## Installation\n\n```bash\n{s}\n```\n\n", .{language.install_commands});
 
         if (language.examples.len != 0) {
-            try writer.print("## Examples\r\n\r\n{s}\r\n\r\n", .{language.examples});
+            try writer.print("## Examples\n\n{s}\n\n", .{language.examples});
         }
 
-        try writer.print("## Development Setup\r\n\r\n", .{});
+        try writer.print("## Development Setup\n\n", .{});
         // Bash setup
-        try writer.print("### On Linux and macOS\r\n\r\n```bash\r\n{s}\r\n```", .{language.developer_setup_bash_commands});
+        try writer.print("### On Linux and macOS\n\n```bash\n{s}\n```", .{language.developer_setup_bash_commands});
 
         // Windows setup
-        try writer.print("### On Windows\r\n\r\n```powershell\r\n{s}\r\n```", .{language.developer_setup_windows_commands});
-        try writer.print("```\r\n", .{});
+        try writer.print("### On Windows\n\n```powershell\n{s}\n```", .{language.developer_setup_windows_commands});
+        try writer.print("```\n", .{});
     }
 }
