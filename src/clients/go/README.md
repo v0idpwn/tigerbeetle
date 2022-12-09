@@ -34,26 +34,20 @@ showing many features of the client.
 
 ## Development Setup
 
-This section is only relevant to folks modifying the Go client code
-itself. If you are just using the client, you can ignore this.
-
-*Prerequisites:*
-- go 1.17+
-- zig 0.9.1
-
-```sh
-# Step 1 - Set up Zig
-$ cd src/clients/go
+### On Linux and macOS
+```bash
+$ git clone https://github.com/tigerbeetledb/tigerbeetle
+$ cd tigerbeetle/src/clients/go
 $ ./tigerbeetle/scripts/install_zig.sh
-
-# Step 2 - Build tb_client for your platform and use it in go
 $ ./scripts/rebuild_binaries.sh
-
-# Step 3 - Build and test tigerbeetle-go (zgo = go with CGO env setup)
-$ ./zgo.sh test # on unix
-$ zgo.bat test # on windows
+$ ./zgo test
 ```
+### On Windows
 
-## Other clients and documentation
-
-- [Tigerbeetle Node](https://github.com/tigerbeetledb/tigerbeetle-node)
+```powershell
+$ git clone https://github.com/tigerbeetledb/tigerbeetle
+$ cd tigerbeetle/src/clients/go
+$ ./tigerbeetle/scripts/install_zig.bat
+$ ./scripts/rebuild_binaries.sh
+$ ./zgo.bat test
+```
