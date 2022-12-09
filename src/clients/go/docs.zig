@@ -3,37 +3,34 @@ const Docs = @import("../docs_types.zig").Docs;
 pub const GoDocs = Docs{
     .readme = "go/README.md",
 
-    .header = 
-    \\# tigerbeetle-go
-    \\
-    \\The TigerBeetle client for Go.
+    .test_linux_docker_image: "go:1.18",
+
+    .name = "tigerbeetle-go",
+    .description =
+        \\The TigerBeetle client for Go.
     \\
     \\[![Go Reference](https://pkg.go.dev/badge/github.com/tigerbeetledb/tigerbeetle-go.svg)](https://pkg.go.dev/github.com/tigerbeetledb/tigerbeetle-go)
     \\
     \\Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
-    \\this repo and subdirectory.
-    \\
-    \\For example:
-    \\
-    \\```bash
-    \\$ cat test.go
-    \\package main
-    \\
-    \\import _ "github.com/tigerbeetledb/tigerbeetle-go"
-    \\import "fmt"
-    \\
-    \\func main() {
-    \\  fmt.Println("Import ok!")
-    \\}
-    \\
-    \\$ go mod init tigerbeetle-test
-    \\$ go mod tidy
-    \\$ go build
-    \\$ ./tigerbeetle-test
-    \\Import ok!
-    \\```
-    \\
-    \\## A more real example
+                           \\this repo and subdirectory.
+                           ,
+    .install_instructions =
+        \\printf 'package main
+        \\
+        \\import _ "github.com/tigerbeetledb/tigerbeetle-go"
+        \\import "fmt"
+        \\
+        \\func main() {
+        \\  fmt.Println("Import ok!")
+        \\}
+        \\' > test.go
+        \\go mod init tbtest
+        \\go mod tidy
+        \\go build
+                ,
+                
+    .examples = 
+    \\## Basic
     \\
     \\See [./samples/basic](./samples/basic) for a Go project
     \\showing many features of the client.
