@@ -74,7 +74,30 @@ pub const GoDocs = Docs{
     \\}
     ,
 
-    .create_accounts_documentation = "",
+    .create_accounts_documentation = 
+    \\The `tb_types` package can be imported from `"github.com/tigerbeetledb/tigerbeetle-go/pkg/types"`.
+    \\
+    \\And the `uint128` helper function above can be defined as follows:
+    \\```go
+    \\func uint128(value string) tb_types.Uint128 {
+    \\	x, err := tb_types.HexStringToUint128(value)
+    \\	if err != nil {
+    \\		panic(err)
+    \\	}
+    \\	return x
+    \\}
+    \\```
+    ,
+
+    .account_flags_details = "",
+
+    .lookup_accounts_example = 
+    \\accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128("2")})
+    \\if err != nil {
+    \\	log.Printf("Could not fetch accounts: %s", err)
+    \\	return
+    \\}
+    ,
 
     .developer_setup_bash_commands = 
     \\git clone https://github.com/tigerbeetledb/tigerbeetle

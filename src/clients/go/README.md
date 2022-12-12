@@ -31,9 +31,7 @@ go build
 See [./samples/basic](./samples/basic) for a Go project
 showing many features of the client.
 
-## Usage
-
-### Creating a client
+## Creating a Client
 
 ```go
 client, err := tb.NewClient(0, []string{"3000"}, 1)
@@ -51,7 +49,7 @@ The following are valid addresses:
 * `127.0.0.1:3000` (interpreted as `127.0.0.1:3000`)
 * `127.0.0.1` (interpreted as `127.0.0.1:3001`, `3001` is the default port)
 
-### Creating accounts
+## Creating Accounts
 
 See details for account fields in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts).
 
@@ -80,7 +78,42 @@ for _, err := range res {
 }
 ```
 
+The `tb_types` package can be imported from `"github.com/tigerbeetledb/tigerbeetle-go/pkg/types"`.
 
+And the `uint128` helper function above can be defined as follows:
+```go
+func uint128(value string) tb_types.Uint128 {
+	x, err := tb_types.HexStringToUint128(value)
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+```
+
+### Account Flags
+
+The account flags value is a bitfield. See details for these flags in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts#flags).
+
+
+
+### Response and Errors
+
+The response is an empty array if all accounts were created successfully. If the response is non-empty, each object in the response array contains error information for an account that failed. The error object contains an error code and the index of the account in the request batch.
+
+## Account Lookup
+
+Account lookup is batched, like account creation. Pass in all IDs to fetch, and matched accounts are returned.
+
+If no account matches an ID, no object is returned for that account. So the order of accounts in the response is not necessarily the same as the order of IDs in the request. You can refer to the ID field in the response to distinguish accounts.
+
+```go
+accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128("2")})
+if err != nil {
+	log.Printf("Could not fetch accounts: %s", err)
+	return
+}
+```
 
 ## Development Setup
 

@@ -2,8 +2,9 @@ const std = @import("std");
 
 const Docs = @import("./docs_types.zig").Docs;
 const go = @import("./go/docs.zig").GoDocs;
+const node = @import("./node/docs.zig").NodeDocs;
 
-const languages = [_]Docs{go};
+const languages = [_]Docs{go, node};
 
 // pub fn run_in_docker(image: []const u8, cmds: [][]const u8) !void {
 //     var cp = std.child_process.ChildProcess.init("docker", &[_][]const u8{
@@ -68,9 +69,7 @@ pub fn main() !void {
             try printParagraph(writer, language.examples);
         }
 
-        try printHeader(writer, 2, "Usage");
-
-        try printHeader(writer, 3, "Creating a client");
+        try printHeader(writer, 2, "Creating a Client");
         try printLanguageCodeBlock(writer, language, language.client_object_example);
         try printParagraph(writer, language.client_object_documentation);
 
@@ -79,11 +78,22 @@ pub fn main() !void {
         try writer.print("* `127.0.0.1:3000` (interpreted as `127.0.0.1:3000`)\n", .{});
         try writer.print("* `127.0.0.1` (interpreted as `127.0.0.1:3001`, `3001` is the default port)\n\n", .{});
 
-        try printHeader(writer, 3, "Creating accounts");
+        try printHeader(writer, 2, "Creating Accounts");
         try printParagraph(writer, "See details for account fields in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts).");
-
         try printLanguageCodeBlock(writer, language, language.create_accounts_example);
         try printParagraph(writer, language.create_accounts_documentation);
+
+        try printHeader(writer, 3, "Account Flags");
+        try printParagraph(writer, "The account flags value is a bitfield. See details for these flags in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts#flags).");
+        try printParagraph(writer, language.account_flags_details);
+
+        try printHeader(writer, 3, "Response and Errors");
+        try printParagraph(writer, "The response is an empty array if all accounts were created successfully. If the response is non-empty, each object in the response array contains error information for an account that failed. The error object contains an error code and the index of the account in the request batch.");
+
+        try printHeader(writer, 2, "Account Lookup");
+        try printParagraph(writer, "Account lookup is batched, like account creation. Pass in all IDs to fetch, and matched accounts are returned.");
+        try printParagraph(writer, "If no account matches an ID, no object is returned for that account. So the order of accounts in the response is not necessarily the same as the order of IDs in the request. You can refer to the ID field in the response to distinguish accounts.");
+        try printLanguageCodeBlock(writer, language, language.lookup_accounts_example);
 
         try printHeader(writer, 2, "Development Setup");
         // Bash setup
