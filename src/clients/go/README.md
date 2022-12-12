@@ -7,10 +7,11 @@ The TigerBeetle client for Go.
 Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
 this repo and subdirectory.
 
-## Installation
+For example:
 
 ```bash
-printf 'package main
+$ cat test.go
+package main
 
 import _ "github.com/tigerbeetledb/tigerbeetle-go"
 import "fmt"
@@ -18,35 +19,41 @@ import "fmt"
 func main() {
   fmt.Println("Import ok!")
 }
-' > test.go
-go mod init tbtest
-go mod tidy
-go build
+
+$ go mod init tigerbeetle-test
+$ go mod tidy
+$ go build
+$ ./tigerbeetle-test
+Import ok!
 ```
 
-## Examples
-
-## Basic
+## A more real example
 
 See [./samples/basic](./samples/basic) for a Go project
 showing many features of the client.
 
 ## Development Setup
 
-### On Linux and macOS
+This section is only relevant to folks modifying the Go client code
+itself. If you are just using the client, you can ignore this.
 
-```bash
-git clone https://github.com/tigerbeetledb/tigerbeetle
-cd tigerbeetle/src/clients/go
-./tigerbeetle/scripts/install_zig.sh
-./scripts/rebuild_binaries.sh
-./zgo test
-```### On Windows
+*Prerequisites:*
+- go 1.17+
+- zig 0.9.1
 
-```powershell
-git clone https://github.com/tigerbeetledb/tigerbeetle
-cd tigerbeetle/src/clients/go
-./tigerbeetle/scripts/install_zig.bat
-./scripts/rebuild_binaries.sh
-./zgo.bat test
-``````
+```sh
+# Step 1 - Set up Zig
+$ cd src/clients/go
+$ ./tigerbeetle/scripts/install_zig.sh
+
+# Step 2 - Build tb_client for your platform and use it in go
+$ ./scripts/rebuild_binaries.sh
+
+# Step 3 - Build and test tigerbeetle-go (zgo = go with CGO env setup)
+$ ./zgo.sh test # on unix
+$ zgo.bat test # on windows
+```
+
+## Other clients and documentation
+
+- [Tigerbeetle Node](https://github.com/tigerbeetledb/tigerbeetle-node)
