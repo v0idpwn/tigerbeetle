@@ -3,6 +3,8 @@ const Docs = @import("../docs_types.zig").Docs;
 pub const GoDocs = Docs{
     .readme = "go/README.md",
 
+    .markdown_name = "go",
+
     .test_linux_docker_image = "go:1.18",
 
     .name = "tigerbeetle-go",
@@ -27,27 +29,52 @@ pub const GoDocs = Docs{
     \\go mod init tbtest
     \\go mod tidy
     \\go build
-            ,
+    ,
 
-        
     .examples = 
     \\## Basic
     \\
     \\See [./samples/basic](./samples/basic) for a Go project
     \\showing many features of the client.
-            ,
+    ,
 
-        .client_object_example =
-        \\client, err := tb.NewClient(0, []string{"3000"}, 1)
-	\\if err != nil {
-	\\	log.Printf("Error creating client: %s", err)
-	\\	return
-	\\}
-	\\defer client.Close()"
-            ,
+    .client_object_example = 
+    \\client, err := tb.NewClient(0, []string{"3000"}, 1)
+    \\if err != nil {
+    \\	log.Printf("Error creating client: %s", err)
+    \\	return
+    \\}
+    \\defer client.Close()"
+    ,
 
-        .client_object_documentation = "`NewClient` takes three arguments: a unique `uint32` representing the cluster ID, an array of string TCP addresses
-            for all  (`uint32`), addresses (`[]string`), and maxConcurrency uint"
+    .client_object_documentation = "`NewClient` takes three arguments: a unique `uint32` representing the cluster ID, an array of addressess for all servers in the cluster, a `uint` max concurrency setting (`1` is a good default and can increase to `4096` as you need increased throughput).",
+
+    .create_accounts_example = 
+    \\// Create two accounts
+    \\res, err := client.CreateAccounts([]tb_types.Account{
+    \\	{
+    \\		ID:     uint128("1"),
+    \\		Ledger: 1,
+    \\		Code:   1,
+    \\	},
+    \\	{
+    \\		ID:     uint128("2"),
+    \\		Ledger: 1,
+    \\		Code:   1,
+    \\	},
+    \\})
+    \\if err != nil {
+    \\	log.Printf("Error creating accounts: %s", err)
+    \\	return
+    \\}
+    \\
+    \\for _, err := range res {
+    \\	log.Printf("Error creating account %d: %s", err.Index, err.Code)
+    \\	return
+    \\}
+    ,
+
+    .create_accounts_documentation = "",
 
     .developer_setup_bash_commands = 
     \\git clone https://github.com/tigerbeetledb/tigerbeetle
