@@ -146,8 +146,6 @@ pub fn main() !void {
 
         try mw.paragraph(language.install_documentation);
 
-        
-
         if (language.examples.len != 0) {
             try mw.header(2, "Examples");
             try mw.paragraph(language.examples);

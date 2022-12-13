@@ -30,15 +30,15 @@ pub const GoDocs = Docs{
     \\
     \\func main() {
     \\  fmt.Println("Import ok!")
-            \\}
-            ,
-        
-    .install_commands =
+    \\}
+    ,
+
+    .install_commands = 
     \\go mod init tbtest
     \\go mod tidy
-            ,
+    ,
 
-        .install_sample_file_test_commands = "go run test.go",
+    .install_sample_file_test_commands = "go run test.go",
 
     .install_documentation = "",
 
