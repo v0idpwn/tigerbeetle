@@ -4,7 +4,7 @@ const Docs = @import("./docs_types.zig").Docs;
 const go = @import("./go/docs.zig").GoDocs;
 const node = @import("./node/docs.zig").NodeDocs;
 
-const languages = [_]Docs{go, node};
+const languages = [_]Docs{ go, node };
 
 // pub fn run_in_docker(image: []const u8, cmds: [][]const u8) !void {
 //     var cp = std.child_process.ChildProcess.init("docker", &[_][]const u8{
@@ -30,7 +30,7 @@ const MarkdownWriter = struct {
     writer: std.ArrayList(u8).Writer,
 
     fn init(buf: *std.ArrayList(u8)) MarkdownWriter {
-        return MarkdownWriter{.buf = buf, .writer = buf.writer()};
+        return MarkdownWriter{ .buf = buf, .writer = buf.writer() };
     }
 
     fn header(mw: *MarkdownWriter, n: i8, content: []const u8) !void {
@@ -62,7 +62,7 @@ const MarkdownWriter = struct {
         const file = try std.fs.cwd().openFileZ(filename, .{ .write = true });
         defer file.close();
 
-        try file.setEndPos(0); 
+        try file.setEndPos(0);
         try file.writeAll(mw.buf.items);
     }
 };
