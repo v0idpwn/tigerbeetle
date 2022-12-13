@@ -41,6 +41,14 @@ steps that are run in CI to test support:
 * [Ubuntu](./scripts/test_install_on_ubuntu.sh)
 * [RHEL](./scripts/test_install_on_rhelubi.sh)
 
+### Sidenote: `BigInt`
+TigerBeetle uses 64-bit integers for many fields while JavaScript's
+builtin `Number` maximum value is `2^53-1`. The `n` suffix in JavaScript
+means the value is a `BigInt`. This is useful for literal numbers. If
+you already have a `Number` variable though, you can call the `BigInt`
+constructor to get a `BigInt` from it. For example, `1n` is the same as
+`BigInt(1)`.
+
 ## Creating a Client
 
 ```javascript
