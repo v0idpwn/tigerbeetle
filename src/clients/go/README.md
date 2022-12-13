@@ -10,11 +10,11 @@ The TigerBeetle client for Go.
 Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
 this repo and subdirectory.
 
-## Installation
-
 ### Prerequisites
 
 * Go >= 1.17
+
+## Setup
 
 ```console
 $ go mod init tbtest

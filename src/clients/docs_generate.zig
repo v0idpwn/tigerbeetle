@@ -133,10 +133,10 @@ pub fn main() !void {
         try mw.header(1, language.name);
         try mw.paragraph(language.description);
 
-        try mw.header(2, "Installation");
-
         try mw.header(3, "Prerequisites");
         try mw.paragraph(language.prerequisites);
+
+        try mw.header(2, "Setup");
 
         try mw.commands(language.install_commands);
         try mw.print("To test the installation, create `test.{s}` and copy this into it:\n\n", .{language.extension});
