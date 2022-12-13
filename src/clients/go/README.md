@@ -12,6 +12,10 @@ this repo and subdirectory.
 
 ## Installation
 
+### Prerequisites
+
+* Go >= 1.17
+
 ```bash
 printf 'package main
 

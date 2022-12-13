@@ -7,6 +7,13 @@ The TigerBeetle client for Node.js.
 
 ## Installation
 
+### Prerequisites
+
+* NodeJS >= `14`. _(If the correct version is not installed, an installation error will occur)_
+
+> Your operating system should be Linux (kernel >= v5.6) or macOS.
+> Windows support is not yet available.
+
 ```bash
 printf 'require("tigerbeetle-node"); console.log("SUCCESS!");' > test.js
 npm install tigerbeetle-node
