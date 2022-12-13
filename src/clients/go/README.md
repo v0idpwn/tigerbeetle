@@ -101,8 +101,6 @@ The account flags value is a bitfield. See details for
 these flags in the [Accounts
 reference](https://docs.tigerbeetle.com/reference/accounts#flags).
 
-
-
 ### Response and Errors
 
 The response is an empty array if all accounts were

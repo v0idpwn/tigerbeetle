@@ -38,10 +38,18 @@ const MarkdownWriter = struct {
     }
 
     fn paragraph(mw: *MarkdownWriter, content: []const u8) !void {
+        // Don't print empty lines.
+        if (content.len == 0) {
+            return;
+        }
         try mw.print("{s}\n\n", .{content});
     }
 
     fn code(mw: *MarkdownWriter, language: []const u8, content: []const u8) !void {
+        // Don't print empty lines.
+        if (content.len == 0) {
+            return;
+        }
         try mw.print("```{s}\n{s}\n```\n\n", .{ language, content });
     }
 

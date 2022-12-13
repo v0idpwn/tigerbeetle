@@ -22,8 +22,6 @@ const client = createClient({
 });
 ```
 
-
-
 The following are valid addresses:
 * `3000` (interpreted as `127.0.0.1:3000`)
 * `127.0.0.1:3000` (interpreted as `127.0.0.1:3000`)
@@ -55,8 +53,6 @@ if (errors.length) {
   console.log(CreateAccountError[errors[0].code]);
 }
 ```
-
-
 
 ### Account Flags
 
