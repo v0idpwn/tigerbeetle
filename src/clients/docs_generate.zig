@@ -61,8 +61,40 @@ const MarkdownWriter = struct {
         mw.buf.clearRetainingCapacity();
     }
 
-    fn save(mw: *MarkdownWriter, filename: [*:0]const u8) !void {
-        const file = try std.fs.cwd().openFileZ(filename, .{ .write = true });
+    fn diffOnDisk(mw: *MarkdownWriter, filename: []const u8) !bool {
+        const file = try std.fs.cwd().createFile(filename, .{ .read = true, .truncate = false });
+        const fSize = (try file.stat()).size;
+        if (fSize != mw.buf.items.len) {
+            return true;
+        }
+
+        var h = std.crypto.hash.sha2.Sha256.init(.{});
+        var buf = std.mem.zeroes([4096]u8);
+        var cursor: usize = 0;
+        while (cursor < fSize) {
+            var maxCanRead = if (fSize - cursor > 4096) 4096 else fSize - cursor;
+            var read = try file.read(buf[0..maxCanRead]);
+            h.update(buf[0..read]);
+            cursor += read;
+        }
+
+        var newH = std.crypto.hash.sha2.Sha256.init(.{});
+        newH.update(mw.buf.items);
+        var newHash: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+        newH.final(newHash[0..]);
+        var existingHash: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
+        h.final(existingHash[0..]);
+
+        return !std.mem.eql(u8, newHash[0..], existingHash[0..]);
+    }
+
+    fn save(mw: *MarkdownWriter, filename: []const u8) !void {
+        var diff = try mw.diffOnDisk(filename);
+        if (!diff) {
+            return;
+        }
+
+        const file = try std.fs.cwd().openFile(filename, .{ .write = true });
         defer file.close();
 
         try file.setEndPos(0);
