@@ -3,13 +3,13 @@
 ## Documentation
 
 Documentation for clients (i.e. client `README.md`s) are generated
-from [./docs_generate.zig](./docs_generate.zig).
+from [docs_generate.zig](./docs_generate.zig).
 
 Each client implements the `Docs` struct from
-[./docs_types.zig](./docs_types.zig).
+[docs_types.zig](./docs_types.zig).
 
 The template for the README is in code in
-[./docs_generate.zig](./docs_generate.zig).
+[docs_generate.zig](./docs_generate.zig).
 
 Existing `Docs` struct implementations are in:
 
