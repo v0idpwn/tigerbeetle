@@ -47,7 +47,13 @@ pub const GoDocs = Docs{
     \\defer client.Close()"
     ,
 
-    .client_object_documentation = "`NewClient` takes three arguments: a unique `uint32` representing the cluster ID, an array of addressess for all servers in the cluster, a `uint` max concurrency setting (`1` is a good default and can increase to `4096` as you need increased throughput).",
+        .client_object_documentation =
+            \\`NewClient` takes three arguments: a unique `uint32`
+            \\representing the cluster ID, an array of addressess for
+            \\all servers in the cluster, a `uint` max concurrency
+            \\setting (`1` is a good default and can increase to `4096`
+            \\as you need increased throughput).
+            ,
 
     .create_accounts_example = 
     \\// Create two accounts

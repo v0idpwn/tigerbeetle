@@ -45,7 +45,11 @@ if err != nil {
 defer client.Close()"
 ```
 
-`NewClient` takes three arguments: a unique `uint32` representing the cluster ID, an array of addressess for all servers in the cluster, a `uint` max concurrency setting (`1` is a good default and can increase to `4096` as you need increased throughput).
+`NewClient` takes three arguments: a unique `uint32`
+representing the cluster ID, an array of addressess for
+all servers in the cluster, a `uint` max concurrency
+setting (`1` is a good default and can increase to `4096`
+as you need increased throughput).
 
 The following are valid addresses:
 * `3000` (interpreted as `127.0.0.1:3000`)
