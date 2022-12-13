@@ -16,8 +16,15 @@ this repo and subdirectory.
 
 * Go >= 1.17
 
-```bash
-printf 'package main
+```console
+$ go mod init tbtest
+$ go mod tidy
+```
+
+To test the installation, create `test.go` and copy this into it:
+
+```go
+package main
 
 import _ "github.com/tigerbeetledb/tigerbeetle-go"
 import "fmt"
@@ -25,10 +32,12 @@ import "fmt"
 func main() {
   fmt.Println("Import ok!")
 }
-' > test.go
-go mod init tbtest
-go mod tidy
-go build
+```
+
+Now run it:
+
+```console
+$ go run test.go
 ```
 
 ## Examples

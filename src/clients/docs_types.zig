@@ -2,11 +2,14 @@ pub const Docs = struct {
     readme: [:0]const u8,
     name: []const u8,
     markdown_name: []const u8,
+    extension: []const u8,
     description: []const u8,
 
     prerequisites: []const u8,
 
     install_commands: []const u8,
+    install_sample_file: []const u8,
+    install_sample_file_test_commands: []const u8,
     install_documentation: []const u8,
 
     examples: []const u8,

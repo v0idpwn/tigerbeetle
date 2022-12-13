@@ -4,6 +4,7 @@ pub const GoDocs = Docs{
     .readme = "go/README.md",
 
     .markdown_name = "go",
+    .extension = "go",
 
     .test_linux_docker_image = "go:1.18",
 
@@ -21,20 +22,23 @@ pub const GoDocs = Docs{
     \\* Go >= 1.17
     ,
 
-    .install_commands = 
-    \\printf 'package main
+    .install_sample_file = 
+    \\package main
     \\
     \\import _ "github.com/tigerbeetledb/tigerbeetle-go"
     \\import "fmt"
     \\
     \\func main() {
     \\  fmt.Println("Import ok!")
-    \\}
-    \\' > test.go
+            \\}
+            ,
+        
+    .install_commands =
     \\go mod init tbtest
     \\go mod tidy
-    \\go build
-    ,
+            ,
+
+        .install_sample_file_test_commands = "go run test.go",
 
     .install_documentation = "",
 

@@ -53,6 +53,16 @@ const MarkdownWriter = struct {
         try mw.print("```{s}\n{s}\n```\n\n", .{ language, content });
     }
 
+    fn commands(mw: *MarkdownWriter, content: []const u8) !void {
+        try mw.print("```console\n", .{});
+        var splits = std.mem.split(u8, content, "\n");
+        while (splits.next()) |chunk| {
+            try mw.print("$ {s}\n", .{chunk});
+        }
+
+        try mw.print("```\n\n", .{});
+    }
+
     fn print(mw: *MarkdownWriter, comptime fmt: []const u8, args: anytype) !void {
         try mw.writer.print(fmt, args);
     }
@@ -128,8 +138,15 @@ pub fn main() !void {
         try mw.header(3, "Prerequisites");
         try mw.paragraph(language.prerequisites);
 
-        try mw.code("bash", language.install_commands);
+        try mw.commands(language.install_commands);
+        try mw.print("To test the installation, create `test.{s}` and copy this into it:\n\n", .{language.extension});
+        try mw.code(language.markdown_name, language.install_sample_file);
+        try mw.paragraph("Now run it:");
+        try mw.commands(language.install_sample_file_test_commands);
+
         try mw.paragraph(language.install_documentation);
+
+        
 
         if (language.examples.len != 0) {
             try mw.header(2, "Examples");

@@ -4,6 +4,7 @@ pub const NodeDocs = Docs{
     .readme = "node/README.md",
 
     .markdown_name = "javascript",
+    .extension = "js",
 
     .test_linux_docker_image = "node:18",
 
@@ -17,13 +18,16 @@ pub const NodeDocs = Docs{
     \\
     \\> Your operating system should be Linux (kernel >= v5.6) or macOS.
     \\> Windows support is not yet available.
-    ,
+        ,
 
-    .install_commands = 
-    \\printf 'require("tigerbeetle-node"); console.log("SUCCESS!");' > test.js
-    \\npm install tigerbeetle-node
-    \\node run
-    ,
+    .install_sample_file =
+        \\const Client = require("tigerbeetle-node");
+        \\console.log("Import ok!");
+        ,
+
+    .install_sample_file_test_commands = "node run test.js",
+
+        .install_commands = "npm install tigerbeetle-node",
 
     .install_documentation = 
     \\If you run into issues, check out the distribution-specific install
