@@ -95,26 +95,50 @@ pub fn main() !void {
         try mw.code(language.markdown_name, language.client_object_example);
         try mw.paragraph(language.client_object_documentation);
 
-        try mw.print("The following are valid addresses:\n", .{});
-        try mw.print("* `3000` (interpreted as `127.0.0.1:3000`)\n", .{});
-        try mw.print("* `127.0.0.1:3000` (interpreted as `127.0.0.1:3000`)\n", .{});
-        try mw.print("* `127.0.0.1` (interpreted as `127.0.0.1:3001`, `3001` is the default port)\n\n", .{});
+        try mw.paragraph(
+            \\The following are valid addresses:
+            \\* `3000` (interpreted as `127.0.0.1:3000`)
+            \\* `127.0.0.1:3000` (interpreted as `127.0.0.1:3000`)
+            \\* `127.0.0.1` (interpreted as `127.0.0.1:3001`, `3001` is the default port)
+        );
 
         try mw.header(2, "Creating Accounts");
-        try mw.paragraph("See details for account fields in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts).");
+        try mw.paragraph(
+            \\See details for account fields in the [Accounts
+            \\reference](https://docs.tigerbeetle.com/reference/accounts).
+        );
         try mw.code(language.markdown_name, language.create_accounts_example);
         try mw.paragraph(language.create_accounts_documentation);
 
         try mw.header(3, "Account Flags");
-        try mw.paragraph("The account flags value is a bitfield. See details for these flags in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts#flags).");
+        try mw.paragraph(
+            \\The account flags value is a bitfield. See details for
+            \\these flags in the [Accounts
+            \\reference](https://docs.tigerbeetle.com/reference/accounts#flags).
+        );
         try mw.paragraph(language.account_flags_details);
 
         try mw.header(3, "Response and Errors");
-        try mw.paragraph("The response is an empty array if all accounts were created successfully. If the response is non-empty, each object in the response array contains error information for an account that failed. The error object contains an error code and the index of the account in the request batch.");
+        try mw.paragraph(
+            \\The response is an empty array if all accounts were
+            \\created successfully. If the response is non-empty, each
+            \\object in the response array contains error information
+            \\for an account that failed. The error object contains an
+            \\error code and the index of the account in the request
+            \\batch.
+        );
 
         try mw.header(2, "Account Lookup");
-        try mw.paragraph("Account lookup is batched, like account creation. Pass in all IDs to fetch, and matched accounts are returned.");
-        try mw.paragraph("If no account matches an ID, no object is returned for that account. So the order of accounts in the response is not necessarily the same as the order of IDs in the request. You can refer to the ID field in the response to distinguish accounts.");
+        try mw.paragraph(
+            \\Account lookup is batched, like account creation. Pass
+            \\in all IDs to fetch, and matched accounts are returned.
+            \\
+            \\If no account matches an ID, no object is returned for
+            \\that account. So the order of accounts in the response is
+            \\not necessarily the same as the order of IDs in the
+            \\request. You can refer to the ID field in the response to
+            \\distinguish accounts.
+        );
         try mw.code(language.markdown_name, language.lookup_accounts_example);
 
         try mw.header(2, "Development Setup");

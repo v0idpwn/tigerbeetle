@@ -28,7 +28,8 @@ The following are valid addresses:
 
 ## Creating Accounts
 
-See details for account fields in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts).
+See details for account fields in the [Accounts
+reference](https://docs.tigerbeetle.com/reference/accounts).
 
 ```javascript
 const account = {
@@ -56,7 +57,9 @@ if (errors.length) {
 
 ### Account Flags
 
-The account flags value is a bitfield. See details for these flags in the [Accounts reference](https://docs.tigerbeetle.com/reference/accounts#flags).
+The account flags value is a bitfield. See details for
+these flags in the [Accounts
+reference](https://docs.tigerbeetle.com/reference/accounts#flags).
 
 To toggle behavior for an account, combine enum values stored in the
 `AccountFlags` object (in TypeScript it is an actual enum) with
@@ -79,13 +82,23 @@ const errors = client.createAccounts([account0, account1]);
 
 ### Response and Errors
 
-The response is an empty array if all accounts were created successfully. If the response is non-empty, each object in the response array contains error information for an account that failed. The error object contains an error code and the index of the account in the request batch.
+The response is an empty array if all accounts were
+created successfully. If the response is non-empty, each
+object in the response array contains error information
+for an account that failed. The error object contains an
+error code and the index of the account in the request
+batch.
 
 ## Account Lookup
 
-Account lookup is batched, like account creation. Pass in all IDs to fetch, and matched accounts are returned.
+Account lookup is batched, like account creation. Pass
+in all IDs to fetch, and matched accounts are returned.
 
-If no account matches an ID, no object is returned for that account. So the order of accounts in the response is not necessarily the same as the order of IDs in the request. You can refer to the ID field in the response to distinguish accounts.
+If no account matches an ID, no object is returned for
+that account. So the order of accounts in the response is
+not necessarily the same as the order of IDs in the
+request. You can refer to the ID field in the response to
+distinguish accounts.
 
 ```javascript
 // account 137n exists, 138n does not
