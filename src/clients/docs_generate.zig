@@ -204,11 +204,11 @@ pub fn main() !void {
         try mw.header(2, "Development Setup");
         // Bash setup
         try mw.header(3, "On Linux and macOS");
-        try mw.code("bash", language.developer_setup_bash_commands);
+        try mw.commands(language.developer_setup_bash_commands);
 
         // Windows setup
         try mw.header(3, "On Windows");
-        try mw.code("powershell", language.developer_setup_windows_commands);
+        try mw.commands(language.developer_setup_windows_commands);
 
         try mw.save(language.readme);
     }

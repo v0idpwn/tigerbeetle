@@ -151,13 +151,13 @@ const accounts = await client.lookupAccounts([137n, 138n]);
 
 ### On Linux and macOS
 
-```bash
-npm install --include dev # This will automatically install and build everything you need.
+```console
+$ npm install --include dev # This will automatically install and build everything you need.
 ```
 
 ### On Windows
 
-```powershell
-npm install --include dev # This will automatically install and build everything you need.
+```console
+$ npm install --include dev # This will automatically install and build everything you need.
 ```
 

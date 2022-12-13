@@ -150,21 +150,21 @@ if err != nil {
 
 ### On Linux and macOS
 
-```bash
-git clone https://github.com/tigerbeetledb/tigerbeetle
-cd tigerbeetle/src/clients/go
-./tigerbeetle/scripts/install_zig.sh
-./scripts/rebuild_binaries.sh
-./zgo test
+```console
+$ git clone https://github.com/tigerbeetledb/tigerbeetle
+$ cd tigerbeetle/src/clients/go
+$ ./tigerbeetle/scripts/install_zig.sh
+$ ./scripts/rebuild_binaries.sh
+$ ./zgo test
 ```
 
 ### On Windows
 
-```powershell
-git clone https://github.com/tigerbeetledb/tigerbeetle
-cd tigerbeetle/src/clients/go
-./tigerbeetle/scripts/install_zig.bat
-./scripts/rebuild_binaries.sh
-./zgo.bat test
+```console
+$ git clone https://github.com/tigerbeetledb/tigerbeetle
+$ cd tigerbeetle/src/clients/go
+$ ./tigerbeetle/scripts/install_zig.bat
+$ ./scripts/rebuild_binaries.sh
+$ ./zgo.bat test
 ```
 
