@@ -33,13 +33,8 @@ const MarkdownWriter = struct {
         return MarkdownWriter{ .buf = buf, .writer = buf.writer() };
     }
 
-    fn header(mw: *MarkdownWriter, n: i8, content: []const u8) !void {
-        var x = n;
-        while (x > 0) {
-            try mw.print("#", .{});
-            x -= 1;
-        }
-        try mw.print(" {s}\n\n", .{content});
+    fn header(mw: *MarkdownWriter, comptime n: i8, content: []const u8) !void {
+        try mw.print(("#" ** n) ++ " {s}\n\n", .{content});
     }
 
     fn paragraph(mw: *MarkdownWriter, content: []const u8) !void {
