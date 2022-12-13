@@ -185,8 +185,14 @@ pub fn main() !void {
             \\object in the response array contains error information
             \\for an account that failed. The error object contains an
             \\error code and the index of the account in the request
-            \\batch.
+                \\batch.
+                \\
+                \\See all error conditions in the [create_accounts
+\\reference](https://docs.tigerbeetle.com/reference/operations/create_accounts).
         );
+
+        try mw.code(language.markdown_name, language.create_accounts_errors_example);
+        try mw.paragraph(language.create_accounts_errors_documentation);
 
         try mw.header(2, "Account Lookup");
         try mw.paragraph(
@@ -201,7 +207,33 @@ pub fn main() !void {
         );
         try mw.code(language.markdown_name, language.lookup_accounts_example);
 
-        try mw.header(2, "General Principles");
+        try mw.header(2, "Create Transfers");
+        try mw.paragraph(
+            \\This creates a journal entry between two accounts.
+\\
+\\See details for transfer fields in the [Transfers
+\\reference](https://docs.tigerbeetle.com/reference/transfers).
+        );
+
+            try mw.header(3, "Response and Errors");
+            try mw.paragraph(
+\\The response is an empty array if all transfers were created
+\\successfully. If the response is non-empty, each object in the
+\\response array contains error information for an transfer that
+\\failed. The error object contains an error code and the index of the
+                    \\transfer in the request batch.
+                    \\
+\\See all error conditions in the [create_transfers
+\\reference](https://docs.tigerbeetle.com/reference/operations/create_transfers).
+            );
+            try mw.code(language.markdown_name, language.create_transfers_errors_example);
+            try mw.paragraph(
+                \\The example above shows that the transfer in index 1 failed with
+\\error 1. This error here means that `transfer1` and `transfer3` were
+\\created successfully. But `transfer2` was not created.
+            );
+        try mw.paragraph(language.create_transfers_errors_documentation);
+
         try mw.header(3, "Batching");
         try mw.paragraph(
             \\TigerBeetle performance is maximized when you batch

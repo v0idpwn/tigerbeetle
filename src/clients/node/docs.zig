@@ -139,6 +139,59 @@ pub const NodeDocs = Docs{
     \\ */
     ,
 
+    .create_transfers_example = 
+    \\const transfer = {
+    \\  id: 1n, // u128
+    \\  pending_id: 0n, // u128
+    \\  // Double-entry accounting:
+    \\  debit_account_id: 1n,  // u128
+    \\  credit_account_id: 2n, // u128
+    \\  // Opaque third-party identifier to link this transfer to an external entity:
+    \\  user_data: 0n, // u128  
+    \\  reserved: 0n, // u128
+    \\  // Timeout applicable for a pending/2-phase transfer:
+    \\  timeout: 0n, // u64, in nano-seconds.
+    \\  // Collection of accounts usually grouped by the currency: 
+    \\  // You can't transfer money between accounts with different ledgers:
+    \\  ledger: 1,  // u32, ledger for transfer (e.g. currency).
+    \\  // Chart of accounts code describing the reason for the transfer:
+    \\  code: 720,  // u16, (e.g. deposit, settlement)
+    \\  flags: 0, // u16
+    \\  amount: 10n, // u64
+    \\  timestamp: 0n, //u64, Reserved: This will be set by the server.
+    \\};
+    \\const errors = await client.createTransfers([transfer]);
+    \\for (const error of errors) {
+    \\  switch (error.code) {
+    \\    default:
+    \\      console.error(`Batch transfer at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
+    \\  }
+    \\}
+    ,
+    .create_transfers_documentation = "",
+
+    .create_transfers_errors_example = 
+    \\const errors = await client.createTransfers([transfer1, transfer2, transfer3]);
+    \\
+    \\// errors = [{ index: 1, code: 1 }];
+    \\for (const error of errors) {
+    \\  switch (error.code) {
+    \\    case CreateTransferError.exists:
+    \\      console.error(`Batch transfer at ${error.index} already exists.`);
+    \\	  break;
+    \\    default:
+    \\      console.error(`Batch transfer at ${error.index} failed to create: ${CreateTransferError[error.code]}.`);
+    \\  }
+    \\}
+    ,
+
+    .create_transfers_errors_documentation = 
+    \\To handle errors you can either 1) exactly match error codes returned
+    \\from `client.createTransfers` with enum values in the
+    \\`CreateTransferError` object, or you can 2) look up the error code in
+    \\the `CreateTransferError` object for a human-readable string.
+    ,
+
     .developer_setup_bash_commands = 
     \\npm install --include dev # This will automatically install and build everything you need.
     ,
