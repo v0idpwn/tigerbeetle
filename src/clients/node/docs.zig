@@ -12,10 +12,29 @@ pub const NodeDocs = Docs{
     \\The TigerBeetle client for Node.js.
     ,
 
+    .prerequisites = 
+    \\* NodeJS >= `14`. _(If the correct version is not installed, an installation error will occur)_
+    \\
+    \\> Your operating system should be Linux (kernel >= v5.6) or macOS.
+    \\> Windows support is not yet available.
+    ,
+
     .install_commands = 
     \\printf 'require("tigerbeetle-node"); console.log("SUCCESS!");' > test.js
     \\npm install tigerbeetle-node
     \\node run
+    ,
+
+    .install_documentation = 
+    \\If you run into issues, check out the distribution-specific install
+    \\steps that are run in CI to test support:
+    \\
+    \\* [Alpine](./scripts/test_install_on_alpine.sh)
+    \\* [Amazon Linux](./scripts/test_install_on_amazonlinux.sh)
+    \\* [Debian](./scripts/test_install_on_debian.sh)
+    \\* [Fedora](./scripts/test_install_on_fedora.sh)
+    \\* [Ubuntu](./scripts/test_install_on_ubuntu.sh)
+    \\* [RHEL](./scripts/test_install_on_rhelubi.sh)
     ,
 
     .examples = "",

@@ -124,7 +124,12 @@ pub fn main() !void {
         try mw.paragraph(language.description);
 
         try mw.header(2, "Installation");
+
+        try mw.header(3, "Prerequisites");
+        try mw.paragraph(language.prerequisites);
+
         try mw.code("bash", language.install_commands);
+        try mw.paragraph(language.install_documentation);
 
         if (language.examples.len != 0) {
             try mw.header(2, "Examples");
