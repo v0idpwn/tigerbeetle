@@ -49,6 +49,25 @@ pub const GoDocs = Docs{
     \\showing many features of the client.
     ,
 
+    .no_batch_example = 
+    \\for (let i = 0; i < len(transfers); i++) {
+    \\  errors := client.CreateTransfers(transfers[i]);
+    \\  // error handling omitted
+    \\}
+    ,
+
+    .batch_example = 
+    \\BATCH_SIZE := 8191
+    \\for i := 0; i < len(transfers); i += BATCH_SIZE {
+    \\  batch := BATCH_SIZE
+    \\  if i + BATCH_SIZE > len(transfers) {
+    \\    i = BATCH_SIZE - i
+    \\  }
+    \\  errors := client.CreateTransfers(transfers[i:i + batch])
+    \\  // error handling omitted
+    \\}
+    ,
+
     .client_object_example = 
     \\client, err := tb.NewClient(0, []string{"3000"}, 1)
     \\if err != nil {

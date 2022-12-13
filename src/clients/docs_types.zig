@@ -12,6 +12,9 @@ pub const Docs = struct {
     install_sample_file_test_commands: []const u8,
     install_documentation: []const u8,
 
+    batch_example: []const u8,
+    no_batch_example: []const u8,
+
     examples: []const u8,
 
     client_object_example: []const u8,

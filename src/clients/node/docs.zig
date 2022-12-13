@@ -51,6 +51,20 @@ pub const NodeDocs = Docs{
 
     .examples = "",
 
+    .no_batch_example = 
+    \\for (let i = 0; i < transfers.len; i++) {
+    \\  const errors = client.createTransfers(transfers[i]);
+    \\  // error handling omitted
+    \\}
+    ,
+
+    .batch_example = 
+    \\const BATCH_SIZE = 8191;
+    \\for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
+    \\  const errors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
+    \\  // error handling omitted
+    \\}
+    ,
     .client_object_example = 
     \\const client = createClient({
     \\  cluster_id: 0,

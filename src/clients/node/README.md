@@ -18,14 +18,14 @@ The TigerBeetle client for Node.js.
 $ npm install tigerbeetle-node
 ```
 
-To test the installation, create `test.js` and copy this into it:
+Create `test.js` and copy this into it:
 
 ```javascript
 const Client = require("tigerbeetle-node");
 console.log("Import ok!");
 ```
 
-Now run it:
+And run:
 
 ```console
 $ node run test.js
@@ -153,6 +153,36 @@ const accounts = await client.lookupAccounts([137n, 138n]);
  *   timestamp: 1623062009212508993n,
  * }]
  */
+```
+
+## General Principles
+
+### Batching
+
+TigerBeetle performance is maximized when you batch
+inserts. The client does not do this automatically for
+you. So, for example, you *can* insert 1 million transfers
+one at a time like so:
+
+```javascript
+for (let i = 0; i < transfers.len; i++) {
+  const errors = client.createTransfers(transfers[i]);
+  // error handling omitted
+}
+```
+
+But the insert rate will be a *fraction* of
+potential. Instead, **always batch what you can**.
+
+The maximum batch size is set in the TigerBeetle server. The default
+is 8191.
+
+```javascript
+const BATCH_SIZE = 8191;
+for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
+  const errors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
+  // error handling omitted
+}
 ```
 
 ## Development Setup

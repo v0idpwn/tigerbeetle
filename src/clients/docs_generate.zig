@@ -139,9 +139,9 @@ pub fn main() !void {
         try mw.header(2, "Setup");
 
         try mw.commands(language.install_commands);
-        try mw.print("To test the installation, create `test.{s}` and copy this into it:\n\n", .{language.extension});
+        try mw.print("Create `test.{s}` and copy this into it:\n\n", .{language.extension});
         try mw.code(language.markdown_name, language.install_sample_file);
-        try mw.paragraph("Now run it:");
+        try mw.paragraph("And run:");
         try mw.commands(language.install_sample_file_test_commands);
 
         try mw.paragraph(language.install_documentation);
@@ -200,6 +200,24 @@ pub fn main() !void {
             \\distinguish accounts.
         );
         try mw.code(language.markdown_name, language.lookup_accounts_example);
+
+        try mw.header(2, "General Principles");
+        try mw.header(3, "Batching");
+        try mw.paragraph(
+            \\TigerBeetle performance is maximized when you batch
+            \\inserts. The client does not do this automatically for
+            \\you. So, for example, you *can* insert 1 million transfers
+            \\one at a time like so:
+        );
+        try mw.code(language.markdown_name, language.no_batch_example);
+        try mw.paragraph(
+            \\But the insert rate will be a *fraction* of
+                \\potential. Instead, **always batch what you can**.
+                \\
+\\The maximum batch size is set in the TigerBeetle server. The default
+\\is 8191.
+        );
+        try mw.code(language.markdown_name, language.batch_example);
 
         try mw.header(2, "Development Setup");
         // Bash setup

@@ -21,7 +21,7 @@ $ go mod init tbtest
 $ go mod tidy
 ```
 
-To test the installation, create `test.go` and copy this into it:
+Create `test.go` and copy this into it:
 
 ```go
 package main
@@ -34,7 +34,7 @@ func main() {
 }
 ```
 
-Now run it:
+And run:
 
 ```console
 $ go run test.go
@@ -143,6 +143,40 @@ accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128(
 if err != nil {
 	log.Printf("Could not fetch accounts: %s", err)
 	return
+}
+```
+
+## General Principles
+
+### Batching
+
+TigerBeetle performance is maximized when you batch
+inserts. The client does not do this automatically for
+you. So, for example, you *can* insert 1 million transfers
+one at a time like so:
+
+```go
+for (let i = 0; i < len(transfers); i++) {
+  errors := client.CreateTransfers(transfers[i]);
+  // error handling omitted
+}
+```
+
+But the insert rate will be a *fraction* of
+potential. Instead, **always batch what you can**.
+
+The maximum batch size is set in the TigerBeetle server. The default
+is 8191.
+
+```go
+BATCH_SIZE := 8191
+for i := 0; i < len(transfers); i += BATCH_SIZE {
+  batch := BATCH_SIZE
+  if i + BATCH_SIZE > len(transfers) {
+    i = BATCH_SIZE - i
+  }
+  errors := client.CreateTransfers(transfers[i:i + batch])
+  // error handling omitted
 }
 ```
 
