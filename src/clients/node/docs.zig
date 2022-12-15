@@ -117,8 +117,31 @@ pub const NodeDocs = Docs{
     \\// Create the account
     \\const errors = client.createAccounts([account0, account1]);
     \\```
-    ,
+        ,
 
+    .create_accounts_errors_example =
+\\const errors = await client.createAccounts([account1, account2, account3]);
+\\
+\\// errors = [{ index: 1, code: 1 }];
+\\for (const error of errors) {
+\\  switch (error.code) {
+\\    case CreateAccountError.exists:
+\\      console.error(`Batch account at ${error.index} already exists.`);
+\\	  break;
+\\    default:
+\\      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
+\\  }
+\\}
+        ,
+
+    .create_accounts_errors_documentation =
+\\To handle errors you can either 1) exactly match error codes returned
+\\from `client.createAccounts` with enum values in the
+\\`CreateAccountError` object, or you can 2) look up the error code in
+\\the `CreateAccountError` object for a human-readable string.
+
+        ,
+    
     .lookup_accounts_example = 
     \\// account 137n exists, 138n does not
     \\const accounts = await client.lookupAccounts([137n, 138n]);
