@@ -52,6 +52,9 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
         /// This field is only used for safety checks, it does not affect the behavior.
         read_pending: bool = false,
 
+        // Used for verifying key order when constants.verify == true.
+        key_prev: ?Table.Key,
+
         pub fn init(allocator: mem.Allocator) !TableIterator {
             const index_block = try allocator.alignedAlloc(
                 u8,
@@ -95,6 +98,7 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
                     },
                 },
                 .value = undefined,
+                .key_prev = null,
             };
         }
 
@@ -132,10 +136,21 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
                 .values = .{ .buffer = it.values.buffer },
                 .data_blocks = .{ .buffer = it.data_blocks.buffer },
                 .value = 0,
+                .key_prev = null,
             };
 
             assert(it.values.empty());
             assert(it.data_blocks.empty());
+
+            if (constants.verify) {
+                Table.verify(
+                    Storage,
+                    context.grid.superblock.storage,
+                    context.address,
+                    null,
+                    null,
+                );
+            }
         }
 
         /// Try to buffer at least a full block of values to be peek()'d.
@@ -269,7 +284,7 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
         /// Returns either:
         /// - the next Key, if available.
         /// - error.Empty when there are no values remaining to iterate.
-        /// - error.Drained when the iterator isn't empty, but some values 
+        /// - error.Drained when the iterator isn't empty, but some values
         ///   still need to be buffered into memory via tick().
         pub fn peek(it: TableIterator) error{ Empty, Drained }!Table.Key {
             assert(!it.read_pending);
@@ -280,7 +295,7 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
             const block = it.data_blocks.head() orelse {
                 // NOTE: Even if there are no values to peek, some may be unbuffered.
                 // We call buffered_all_values() to distinguish between the iterator
-                // being empty and needing to tic() to refill values.
+                // being empty and needing to tick() to refill values.
                 if (!it.buffered_all_values()) return error.Drained;
                 return error.Empty;
             };
@@ -291,6 +306,18 @@ pub fn TableIteratorType(comptime Table: type, comptime Storage: type) type {
 
         /// This may only be called after peek() returns a Key (and not Empty or Drained)
         pub fn pop(it: *TableIterator) Table.Value {
+            const value = it.pop_internal();
+
+            if (constants.verify) {
+                const key = Table.key_from_value(&value);
+                if (it.key_prev) |k| assert(Table.compare_keys(k, key) == .lt);
+                it.key_prev = key;
+            }
+
+            return value;
+        }
+
+        fn pop_internal(it: *TableIterator) Table.Value {
             assert(!it.read_pending);
             assert(!it.read_table_index);
 

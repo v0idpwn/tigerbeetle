@@ -325,16 +325,14 @@ pub const superblock_trailer_free_set_size_max = blk: {
     const encode_size_max = SuperBlockFreeSet.encode_size_max(block_count_max);
     assert(encode_size_max > 0);
 
-    // Round up to the nearest sector:
-    break :blk div_ceil(encode_size_max, constants.sector_size) * constants.sector_size;
+    break :blk vsr.sector_ceil(encode_size_max);
 };
 
 pub const superblock_trailer_client_table_size_max = blk: {
     const encode_size_max = SuperBlockClientTable.encode_size_max;
     assert(encode_size_max > 0);
 
-    // Round up to the nearest sector:
-    break :blk div_ceil(encode_size_max, constants.sector_size) * constants.sector_size;
+    break :blk vsr.sector_ceil(encode_size_max);
 };
 
 pub const data_file_size_min = blk: {
@@ -352,15 +350,15 @@ const block_count_max = blk: {
     // The size of a freeset is related to the number of blocks it must store.
     // Maximize the number of grid blocks.
 
-    var shard_count = @divFloor(size, constants.block_size * SuperBlockFreeSet.shard_size);
+    var shard_count = @divFloor(size, constants.block_size * SuperBlockFreeSet.shard_bits);
     while (true) : (shard_count -= 1) {
-        const block_count = shard_count * SuperBlockFreeSet.shard_size;
+        const block_count = shard_count * SuperBlockFreeSet.shard_bits;
         const grid_size = block_count * constants.block_size;
         const free_set_size = vsr.sector_ceil(SuperBlockFreeSet.encode_size_max(block_count));
         const free_sets_size = constants.superblock_copies * free_set_size;
         if (free_sets_size + grid_size <= size) break;
     }
-    break :blk shard_count * SuperBlockFreeSet.shard_size;
+    break :blk shard_count * SuperBlockFreeSet.shard_bits;
 };
 
 comptime {
@@ -495,9 +493,9 @@ pub fn SuperBlockType(comptime Storage: type) type {
 
             const shard_count_limit = @intCast(usize, @divFloor(
                 options.storage_size_limit - data_file_size_min,
-                constants.block_size * FreeSet.shard_size,
+                constants.block_size * FreeSet.shard_bits,
             ));
-            const block_count_limit = shard_count_limit * FreeSet.shard_size;
+            const block_count_limit = shard_count_limit * FreeSet.shard_bits;
             assert(block_count_limit <= block_count_max);
 
             const a = try allocator.allocAdvanced(SuperBlockSector, constants.sector_size, 1, .exact);
@@ -524,9 +522,7 @@ pub fn SuperBlockType(comptime Storage: type) type {
             );
             errdefer manifest.deinit(allocator);
 
-            // TODO Allocate a FreeSet (and write buffer) when storage_size_limit is small.
-            // Right now we can allocate blocks outside of the limit.
-            var free_set = try FreeSet.init(allocator, block_count_max);
+            var free_set = try FreeSet.init(allocator, block_count_limit);
             errdefer free_set.deinit(allocator);
 
             var client_table = try ClientTable.init(allocator, options.message_pool);
@@ -543,7 +539,7 @@ pub fn SuperBlockType(comptime Storage: type) type {
             const free_set_buffer = try allocator.allocAdvanced(
                 u8,
                 constants.sector_size,
-                superblock_trailer_free_set_size_max,
+                SuperBlockFreeSet.encode_size_max(block_count_limit),
                 .exact,
             );
             errdefer allocator.free(free_set_buffer);
@@ -799,7 +795,7 @@ pub fn SuperBlockType(comptime Storage: type) type {
 
         fn write_staging_encode_free_set(superblock: *SuperBlock) void {
             const staging: *SuperBlockSector = superblock.staging;
-            const encode_size_max = FreeSet.encode_size_max(block_count_max);
+            const encode_size_max = FreeSet.encode_size_max(superblock.block_count_limit);
             const target = superblock.free_set_buffer[0..encode_size_max];
 
             superblock.free_set.include_staging();
@@ -816,7 +812,14 @@ pub fn SuperBlockType(comptime Storage: type) type {
             assert(staging.storage_size <= staging.storage_size_max);
             assert(staging.storage_size <= superblock.storage_size_limit);
 
-            staging.free_set_size = @intCast(u32, superblock.free_set.encode(target));
+            if (superblock.free_set.count_acquired() == 0) {
+                // EWAH encodes a zero-length bitset to an empty slice anyway, but handle this
+                // condition separately so that during formatting it doesn't depend on the choice
+                // of storage_size_limit.
+                staging.free_set_size = 0;
+            } else {
+                staging.free_set_size = @intCast(u32, superblock.free_set.encode(target));
+            }
             staging.free_set_checksum = vsr.checksum(target[0..staging.free_set_size]);
         }
 
@@ -1116,7 +1119,7 @@ pub fn SuperBlockType(comptime Storage: type) type {
                     assert(working.sequence == 1);
                     assert(working.storage_size == data_file_size_min);
                     assert(working.manifest_size == 0);
-                    assert(working.free_set_size == 8);
+                    assert(working.free_set_size == 0);
                     assert(working.client_table_size == 4);
                     assert(working.vsr_state.commit_min_checksum ==
                         vsr.Header.root_prepare(working.cluster).checksum);

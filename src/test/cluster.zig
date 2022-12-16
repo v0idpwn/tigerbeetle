@@ -137,6 +137,8 @@ pub const Cluster = struct {
             storage_options.replica_index = @intCast(u8, replica_index);
             storage_options.faulty_wal_areas = faulty_wal_areas[replica_index];
             storage.* = try Storage.init(allocator, options.storage_size_limit, storage_options);
+            // Disable most faults at startup, so that the replicas don't get stuck in recovery mode.
+            storage.faulty = replica_index >= vsr.quorums(options.replica_count).view_change;
         }
         errdefer for (cluster.storages) |*storage| storage.deinit(allocator);
 
@@ -330,6 +332,7 @@ pub const Cluster = struct {
             .{
                 .replica_count = @intCast(u8, cluster.replicas.len),
                 .storage = &cluster.storages[replica_index],
+                // TODO Test restarting with a higher storage limit.
                 .storage_size_limit = cluster.options.storage_size_limit,
                 .message_pool = &cluster.pools[replica_index],
                 .time = time,

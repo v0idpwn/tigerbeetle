@@ -16,6 +16,17 @@ const snapshot_latest = @import("tree.zig").snapshot_latest;
 const BlockType = @import("grid.zig").BlockType;
 const TableInfoType = @import("manifest.zig").TableInfoType;
 
+pub const TableUsage = enum {
+    /// General purpose table.
+    general,
+    /// If your usage fits this pattern:
+    /// * Only put keys which are not present.
+    /// * Only remove keys which are present.
+    /// * TableKey == TableValue (modulo padding, eg CompositeKey)
+    /// Then we can unlock additional optimizations.
+    secondary_index,
+};
+
 /// A table is a set of blocks:
 ///
 /// * Index block (exactly 1)
@@ -69,6 +80,7 @@ pub fn TableType(
     comptime table_tombstone: fn (*const TableValue) callconv(.Inline) bool,
     /// Returns a tombstone value representation for a key.
     comptime table_tombstone_from_key: fn (TableKey) callconv(.Inline) TableValue,
+    comptime usage: TableUsage,
 ) type {
     return struct {
         const Table = @This();
@@ -81,6 +93,7 @@ pub fn TableType(
         pub const sentinel_key = table_sentinel_key;
         pub const tombstone = table_tombstone;
         pub const tombstone_from_key = table_tombstone_from_key;
+        pub const usage = usage;
 
         // Export hashmap context for Key and Value
         pub const HashMapContextValue = struct {
@@ -616,6 +629,11 @@ pub fn TableType(
                     assert(compare_keys(builder.key_min, builder.key_max) == .lt);
                 }
 
+                if (current > 0) {
+                    const key_max_prev = index_data_keys(builder.index_block)[current - 1];
+                    assert(compare_keys(key_max_prev, key_from_value(&values[0])) == .lt);
+                }
+
                 builder.data_block_count += 1;
                 builder.value = 0;
 
@@ -966,6 +984,43 @@ pub fn TableType(
 
             return null;
         }
+
+        pub fn verify(
+            comptime Storage: type,
+            storage: *Storage,
+            index_address: u64,
+            key_min: ?Key,
+            key_max: ?Key,
+        ) void {
+            if (Storage != @import("../test/storage.zig").Storage)
+                // Too complicated to do async verification
+                return;
+
+            const index_block = storage.grid_block(index_address);
+            const addresses = index_data_addresses(index_block);
+            const data_blocks_used = index_data_blocks_used(index_block);
+            var data_block_index: usize = 0;
+            while (data_block_index < data_blocks_used) : (data_block_index += 1) {
+                const address = addresses[data_block_index];
+                const data_block = storage.grid_block(address);
+                const values = data_block_values_used(data_block);
+                if (values.len > 0) {
+                    if (data_block_index == 0) {
+                        assert(key_min == null or
+                            compare_keys(key_min.?, key_from_value(&values[0])) == .eq);
+                    }
+                    if (data_block_index == data_blocks_used - 1) {
+                        assert(key_max == null or
+                            compare_keys(key_from_value(&values[values.len - 1]), key_max.?) == .eq);
+                    }
+                    var a = &values[0];
+                    for (values[1..]) |*b| {
+                        assert(compare_keys(key_from_value(a), key_from_value(b)) == .lt);
+                        a = b;
+                    }
+                }
+            }
+        }
     };
 }
 
@@ -980,6 +1035,7 @@ test "Table" {
         Key.sentinel_key,
         Key.tombstone,
         Key.tombstone_from_key,
+        .general,
     );
 
     _ = Table;
