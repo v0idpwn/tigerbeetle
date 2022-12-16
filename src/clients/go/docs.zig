@@ -159,7 +159,7 @@ pub const GoDocs = Docs{
 \\`CreateAccountError` object, or you can 2) look up the error code in
 \\the `CreateAccountError` object for a human-readable string.
 
-
+            ,
     .lookup_accounts_example = 
     \\accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128("2")})
     \\if err != nil {

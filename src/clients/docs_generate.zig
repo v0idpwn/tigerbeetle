@@ -78,24 +78,17 @@ const MarkdownWriter = struct {
             return true;
         }
 
-        var h = std.crypto.hash.sha2.Sha256.init(.{});
         var buf = std.mem.zeroes([4096]u8);
         var cursor: usize = 0;
         while (cursor < fSize) {
             var maxCanRead = if (fSize - cursor > 4096) 4096 else fSize - cursor;
             var read = try file.read(buf[0..maxCanRead]);
-            h.update(buf[0..read]);
-            cursor += read;
+            if (read != mw.buf.items[cursor..maxCanRead]) {
+                return false;
+            }
         }
 
-        var newH = std.crypto.hash.sha2.Sha256.init(.{});
-        newH.update(mw.buf.items);
-        var newHash: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
-        newH.final(newHash[0..]);
-        var existingHash: [std.crypto.hash.sha2.Sha256.digest_length]u8 = undefined;
-        h.final(existingHash[0..]);
-
-        return !std.mem.eql(u8, newHash[0..], existingHash[0..]);
+        return true;
     }
 
     fn save(mw: *MarkdownWriter, filename: []const u8) !void {
