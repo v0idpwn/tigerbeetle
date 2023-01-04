@@ -16,6 +16,21 @@ pub const GoDocs = Docs{
     \\
     \\Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
     \\this repo and subdirectory.
+    \\
+    \\Throughout this README there will be a reference to a
+    \\helper, `uint128`, that converts a string to TigerBeetle's
+    \\representation of a 128-bit integer. That helper can be
+    \\defined like so:
+    \\
+    \\```go
+    \\func uint128(value string) tb_types.Uint128 {
+    \\	x, err := tb_types.HexStringToUint128(value)
+    \\	if err != nil {
+    \\		panic(err)
+    \\	}
+    \\	return x
+    \\}
+    \\```
     ,
 
     .prerequisites = 
@@ -112,17 +127,6 @@ pub const GoDocs = Docs{
 
     .create_accounts_documentation = 
     \\The `tb_types` package can be imported from `"github.com/tigerbeetledb/tigerbeetle-go/pkg/types"`.
-    \\
-    \\And the `uint128` helper function above can be defined as follows:
-    \\```go
-    \\func uint128(value string) tb_types.Uint128 {
-    \\	x, err := tb_types.HexStringToUint128(value)
-    \\	if err != nil {
-    \\		panic(err)
-    \\	}
-    \\	return x
-    \\}
-    \\```
     ,
 
     .account_flags_details = "",
@@ -166,7 +170,27 @@ pub const GoDocs = Docs{
     \\}
     ,
 
-    .create_transfers_example = "",
+    .create_transfers_example = 
+    \\transfer := tb_types.Transfer{
+    \\	ID:              uint128("1"),
+    \\	DebitAccountID:  uint128("1"),
+    \\	CreditAccountID: uint128("2"),
+    \\	Ledger:          1,
+    \\	Code:            1,
+    \\	Amount:          10,
+    \\}
+    \\
+    \\res, err := client.CreateTransfers([]tb_types.Transfer{transfer})
+    \\if err != nil {
+    \\	log.Printf("Error creating transfer batch %d: %s", i, err)
+    \\	return
+    \\}
+    \\
+    \\for _, err := range res {
+    \\	log.Printf("Batch transfer at %d failed to create: %s", err.Index, err.Code)
+    \\	return
+    \\}
+    ,
     .create_transfers_documentation = "",
     .create_transfers_errors_example = "",
     .create_transfers_errors_documentation = "",

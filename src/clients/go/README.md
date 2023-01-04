@@ -10,6 +10,21 @@ The TigerBeetle client for Go.
 Make sure to import `github.com/tigerbeetledb/tigerbeetle-go`, not
 this repo and subdirectory.
 
+Throughout this README there will be a reference to a
+helper, `uint128`, that converts a string to TigerBeetle's
+representation of a 128-bit integer. That helper can be
+defined like so:
+
+```go
+func uint128(value string) tb_types.Uint128 {
+	x, err := tb_types.HexStringToUint128(value)
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+```
+
 ### Prerequisites
 
 * Go >= 1.17
@@ -100,17 +115,6 @@ for _, err := range res {
 ```
 
 The `tb_types` package can be imported from `"github.com/tigerbeetledb/tigerbeetle-go/pkg/types"`.
-
-And the `uint128` helper function above can be defined as follows:
-```go
-func uint128(value string) tb_types.Uint128 {
-	x, err := tb_types.HexStringToUint128(value)
-	if err != nil {
-		panic(err)
-	}
-	return x
-}
-```
 
 ### Account Flags
 
