@@ -124,6 +124,29 @@ for an account that failed. The error object contains an
 error code and the index of the account in the request
 batch.
 
+See all error conditions in the [create_accounts
+reference](https://docs.tigerbeetle.com/reference/operations/create_accounts).
+
+```javascript
+const errors = await client.createAccounts([account1, account2, account3]);
+
+// errors = [{ index: 1, code: 1 }];
+for (const error of errors) {
+  switch (error.code) {
+    case CreateAccountError.exists:
+      console.error(`Batch account at ${error.index} already exists.`);
+	  break;
+    default:
+      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
+  }
+}
+```
+
+To handle errors you can either 1) exactly match error codes returned
+from `client.createAccounts` with enum values in the
+`CreateAccountError` object, or you can 2) look up the error code in
+the `CreateAccountError` object for a human-readable string.
+
 ## Account Lookup
 
 Account lookup is batched, like account creation. Pass
@@ -155,7 +178,47 @@ const accounts = await client.lookupAccounts([137n, 138n]);
  */
 ```
 
-## General Principles
+## Create Transfers
+
+This creates a journal en between two accounts.
+
+See details for transfer fields in the [Transfers
+reference](https://docs.tigerbeetle.com/reference/transfers).
+
+### Response and Errors
+
+The response is an empty array if all transfers were created
+successfully. If the response is non-empty, each object in the
+response array contains error information for an transfer that
+failed. The error object contains an error code and the index of the
+transfer in the request batch.
+
+See all error conditions in the [create_transfers
+reference](https://docs.tigerbeetle.com/reference/operations/create_transfers).
+
+```javascript
+const errors = await client.createTransfers([transfer1, transfer2, transfer3]);
+
+// errors = [{ index: 1, code: 1 }];
+for (const error of errors) {
+  switch (error.code) {
+    case CreateTransferError.exists:
+      console.error(`Batch transfer at ${error.index} already exists.`);
+	  break;
+    default:
+      console.error(`Batch transfer at ${error.index} failed to create: ${CreateTransferError[error.code]}.`);
+  }
+}
+```
+
+The example above shows that the transfer in index 1 failed with
+error 1. This error here means that `transfer1` and `transfer3` were
+created successfully. But `transfer2` was not created.
+
+To handle errors you can either 1) exactly match error codes returned
+from `client.createTransfers` with enum values in the
+`CreateTransferError` object, or you can 2) look up the error code in
+the `CreateTransferError` object for a human-readable string.
 
 ### Batching
 

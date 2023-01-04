@@ -64,7 +64,7 @@ const MarkdownWriter = struct {
     }
 
     fn print(mw: *MarkdownWriter, comptime fmt: []const u8, args: anytype) void {
-        try mw.writer.print(fmt, args) catch unreachable;
+        mw.writer.print(fmt, args) catch unreachable;
     }
 
     fn reset(mw: *MarkdownWriter) void {
@@ -82,8 +82,9 @@ const MarkdownWriter = struct {
         var cursor: usize = 0;
         while (cursor < fSize) {
             var maxCanRead = if (fSize - cursor > 4096) 4096 else fSize - cursor;
-            var read = try file.read(buf[0..maxCanRead]);
-            if (read != mw.buf.items[cursor..maxCanRead]) {
+            //
+            _ = try file.read(buf[0..maxCanRead]);
+            if (std.mem.eql(u8, buf[0..], mw.buf.items[cursor..maxCanRead])) {
                 return false;
             }
         }

@@ -125,9 +125,9 @@ pub const GoDocs = Docs{
     \\```
     ,
 
-        .account_flags_details = "",
+    .account_flags_details = "",
 
-        .create_accounts_errors_example =
+    .create_accounts_errors_example = 
     \\res, err := client.CreateAccounts([]tb_types.Account{account1, account2, account3})
     \\if err != nil {
     \\	log.Printf("Error creating accounts: %s", err)
@@ -138,28 +138,26 @@ pub const GoDocs = Docs{
     \\	log.Printf("Error creating account %d: %s", err.Index, err.Code)
     \\	return
     \\}
+    \\const errors = await client.createAccounts([account1, account2, account3]);
+    \\
+    \\// errors = [{ index: 1, code: 1 }];
+    \\for (const error of errors) {
+    \\  switch (error.code) {
+    \\    case CreateAccountError.exists:
+    \\      console.error(`Batch account at ${error.index} already exists.`);
+    \\	  break;
+    \\    default:
+    \\      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
+    \\  }
+    \\}
+    ,
 
-\\const errors = await client.createAccounts([account1, account2, account3]);
-\\
-\\// errors = [{ index: 1, code: 1 }];
-\\for (const error of errors) {
-\\  switch (error.code) {
-\\    case CreateAccountError.exists:
-\\      console.error(`Batch account at ${error.index} already exists.`);
-\\	  break;
-\\    default:
-\\      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
-\\  }
-\\}
-        ,
-
-    .create_accounts_errors_documentation =
-\\To handle errors you can either 1) exactly match error codes returned
-\\from `client.createAccounts` with enum values in the
-\\`CreateAccountError` object, or you can 2) look up the error code in
-\\the `CreateAccountError` object for a human-readable string.
-
-            ,
+    .create_accounts_errors_documentation = 
+    \\To handle errors you can either 1) exactly match error codes returned
+    \\from `client.createAccounts` with enum values in the
+    \\`CreateAccountError` object, or you can 2) look up the error code in
+    \\the `CreateAccountError` object for a human-readable string.
+    ,
     .lookup_accounts_example = 
     \\accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128("2")})
     \\if err != nil {
@@ -167,6 +165,11 @@ pub const GoDocs = Docs{
     \\	return
     \\}
     ,
+
+    .create_transfers_example = "",
+    .create_transfers_documentation = "",
+    .create_transfers_errors_example = "",
+    .create_transfers_errors_documentation = "",
 
     .developer_setup_bash_commands = 
     \\git clone https://github.com/tigerbeetledb/tigerbeetle
