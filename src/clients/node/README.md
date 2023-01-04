@@ -180,7 +180,7 @@ const accounts = await client.lookupAccounts([137n, 138n]);
 
 ## Create Transfers
 
-This creates a journal en between two accounts.
+This creates a journal entry between two accounts.
 
 See details for transfer fields in the [Transfers
 reference](https://docs.tigerbeetle.com/reference/transfers).
