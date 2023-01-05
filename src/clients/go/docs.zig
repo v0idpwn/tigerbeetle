@@ -6,7 +6,7 @@ pub const GoDocs = Docs{
     .markdown_name = "go",
     .extension = "go",
 
-    .test_linux_docker_image = "go:1.18",
+    .test_linux_docker_image = "golang:1.18",
 
     .name = "tigerbeetle-go",
     .description = 
@@ -51,7 +51,9 @@ pub const GoDocs = Docs{
     .install_commands = 
     \\go mod init tbtest
     \\go mod tidy
-    ,
+            ,
+
+    .install_sample_file_build_commands = "go build test.go",
 
     .install_sample_file_test_commands = "go run test.go",
 

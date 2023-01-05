@@ -25,6 +25,7 @@ pub const NodeDocs = Docs{
     \\console.log("Import ok!");
     ,
 
+    .install_sample_file_build_commands = "npx tsc test.js",
     .install_sample_file_test_commands = "node run test.js",
 
     .install_commands = "npm install tigerbeetle-node",

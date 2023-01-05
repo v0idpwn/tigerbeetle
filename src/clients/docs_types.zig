@@ -9,6 +9,7 @@ pub const Docs = struct {
 
     install_commands: []const u8,
     install_sample_file: []const u8,
+    install_sample_file_build_commands: []const u8,
     install_sample_file_test_commands: []const u8,
     install_documentation: []const u8,
 
