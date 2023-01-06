@@ -46,8 +46,7 @@ const Environment = struct {
     // This is the smallest size that set_associative_cache will allow us.
     const cache_entries_max = 2048;
     const forest_options = StateMachine.forest_options(.{
-        // Ignored by StateMachine.forest_options().
-        .lsm_forest_node_count = undefined,
+        .lsm_forest_node_count = node_count,
         .cache_entries_accounts = cache_entries_max,
         .cache_entries_transfers = cache_entries_max,
         .cache_entries_posted = cache_entries_max,
@@ -93,7 +92,11 @@ const Environment = struct {
         env.message_pool = try MessagePool.init(allocator, .replica);
         errdefer env.message_pool.deinit(allocator);
 
-        env.superblock = try SuperBlock.init(allocator, env.storage, &env.message_pool);
+        env.superblock = try SuperBlock.init(allocator, .{
+            .storage = env.storage,
+            .storage_size_limit = constants.storage_size_max,
+            .message_pool = &env.message_pool,
+        });
         errdefer env.superblock.deinit(allocator);
 
         env.grid = try Grid.init(allocator, &env.superblock);
@@ -121,7 +124,7 @@ const Environment = struct {
     }
 
     fn tick(env: *Environment) void {
-        env.grid.tick();
+        // env.grid.tick();
         env.storage.tick();
     }
 
@@ -147,7 +150,6 @@ const Environment = struct {
         env.superblock.format(superblock_format_callback, &env.superblock_context, .{
             .cluster = cluster,
             .replica = replica,
-            .storage_size_max = constants.storage_size_max,
         });
         env.tick_until_state_change(.init, .formatted);
     }
@@ -260,6 +262,8 @@ const Environment = struct {
                     if (compact.checkpoint) env.checkpoint(compact.op);
                 },
                 .put_account => |account| {
+                    // The forest requires prefetch before put.
+                    env.prefetch_account(account.id);
                     env.forest.grooves.accounts.put(&account);
                     try model.put(account.id, account);
                 },

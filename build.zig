@@ -1,5 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const CrossTarget = std.zig.CrossTarget;
+const Mode = std.builtin.Mode;
 
 const config = @import("./src/config.zig");
 
@@ -41,21 +43,30 @@ pub fn build(b: *std.build.Builder) void {
     ) orelse .none;
     options.addOption(config.TracerBackend, "tracer_backend", tracer_backend);
 
-    {
-        const tigerbeetle = b.addExecutable("tigerbeetle", "src/main.zig");
-        tigerbeetle.setTarget(target);
-        tigerbeetle.setBuildMode(mode);
-        tigerbeetle.install();
-        // Ensure that we get stack traces even in release builds.
-        tigerbeetle.omit_frame_pointer = false;
-        tigerbeetle.addOptions("tigerbeetle_build_options", options);
-        link_tracer_backend(tigerbeetle, tracer_backend, target);
+    const tigerbeetle = b.addExecutable("tigerbeetle", "src/main.zig");
+    tigerbeetle.setTarget(target);
+    tigerbeetle.setBuildMode(mode);
+    tigerbeetle.install();
+    // Ensure that we get stack traces even in release builds.
+    tigerbeetle.omit_frame_pointer = false;
+    tigerbeetle.addOptions("tigerbeetle_build_options", options);
+    link_tracer_backend(tigerbeetle, tracer_backend, target);
 
+    {
         const run_cmd = tigerbeetle.run();
         if (b.args) |args| run_cmd.addArgs(args);
 
         const run_step = b.step("run", "Run TigerBeetle");
         run_step.dependOn(&run_cmd.step);
+    }
+
+    {
+        // "zig build install" moves the server executable to the root folder:
+        const move_cmd = b.addInstallBinFile(tigerbeetle.getOutputSource(), b.pathJoin(&.{ "../../", tigerbeetle.out_filename }));
+        move_cmd.step.dependOn(&tigerbeetle.step);
+
+        var install_step = b.getInstallStep();
+        install_step.dependOn(&move_cmd.step);
     }
 
     {
@@ -89,9 +100,9 @@ pub fn build(b: *std.build.Builder) void {
         lint_step.dependOn(&run_cmd.step);
     }
 
-    // Executable which generates src/c/tb_client.h
+    // Executable which generates src/clients/c/tb_client.h
     const tb_client_header_generate = blk: {
-        const tb_client_header = b.addExecutable("tb_client_header", "src/c/tb_client_header.zig");
+        const tb_client_header = b.addExecutable("tb_client_header", "src/clients/c/tb_client_header.zig");
         tb_client_header.addOptions("tigerbeetle_build_options", options);
         tb_client_header.setMainPkgPath("src");
         break :blk tb_client_header.run();
@@ -103,31 +114,46 @@ pub fn build(b: *std.build.Builder) void {
         unit_tests.setBuildMode(mode);
         unit_tests.addOptions("tigerbeetle_build_options", options);
         unit_tests.step.dependOn(&tb_client_header_generate.step);
+        unit_tests.setFilter(b.option(
+            []const u8,
+            "test-filter",
+            "Skip tests that do not match filter",
+        ));
         link_tracer_backend(unit_tests, tracer_backend, target);
 
-        // for src/c/tb_client_header_test.zig to use cImport on tb_client.h
+        // for src/clients/c/tb_client_header_test.zig to use cImport on tb_client.h
         unit_tests.linkLibC();
-        unit_tests.addIncludeDir("src/c/");
+        unit_tests.addIncludeDir("src/clients/c/");
 
         const test_step = b.step("test", "Run the unit tests");
         test_step.dependOn(&unit_tests.step);
     }
 
+    // Clients build:
     {
-        const tb_client = b.addStaticLibrary("tb_client", "src/c/tb_client.zig");
-        tb_client.setMainPkgPath("src");
-        tb_client.setTarget(target);
-        tb_client.setBuildMode(mode);
-        tb_client.addOptions("tigerbeetle_build_options", options);
-        tb_client.setOutputDir("zig-out");
-        tb_client.pie = true;
-        tb_client.bundle_compiler_rt = true;
-        tb_client.step.dependOn(&tb_client_header_generate.step);
+        var install_step = b.addInstallArtifact(tigerbeetle);
 
-        tb_client.linkLibC();
-
-        const build_step = b.step("tb_client", "Build C client shared library");
-        build_step.dependOn(&tb_client.step);
+        go_client(
+            b,
+            mode,
+            &.{ &install_step.step, &tb_client_header_generate.step },
+            options,
+            tracer_backend,
+        );
+        java_client(
+            b,
+            mode,
+            &.{&install_step.step},
+            options,
+            tracer_backend,
+        );
+        dotnet_client(
+            b,
+            mode,
+            &.{&install_step.step},
+            options,
+            tracer_backend,
+        );
     }
 
     {
@@ -145,8 +171,12 @@ pub fn build(b: *std.build.Builder) void {
             simulator.setBuildMode(.ReleaseSafe);
         }
 
-        const step = b.step("simulator", "Run the Simulator");
-        step.dependOn(&run_cmd.step);
+        const install_step = b.addInstallArtifact(simulator);
+        const build_step = b.step("simulator", "Build the Simulator");
+        build_step.dependOn(&install_step.step);
+
+        const run_step = b.step("simulator_run", "Run the Simulator");
+        run_step.dependOn(&run_cmd.step);
     }
 
     {
@@ -318,5 +348,149 @@ fn link_tracer_backend(
                 exe.linkSystemLibrary("ws2_32");
             }
         },
+    }
+}
+
+fn go_client(
+    b: *std.build.Builder,
+    mode: Mode,
+    dependencies: []const *std.build.Step,
+    options: *std.build.OptionsStep,
+    tracer_backend: config.TracerBackend,
+) void {
+    const build_step = b.step("go_client", "Build Go client shared library");
+
+    for (dependencies) |dependency| {
+        build_step.dependOn(dependency);
+    }
+
+    // Updates the generated header file:
+    const install_header = b.addInstallFile(
+        .{ .path = "src/clients/c/tb_client.h" },
+        "../src/clients/go/pkg/native/tb_client.h",
+    );
+
+    const bindings = b.addExecutable("go_bindings", "src/clients/go/go_bindings.zig");
+    bindings.addOptions("tigerbeetle_build_options", options);
+    bindings.setMainPkgPath("src");
+    const bindings_step = bindings.run();
+
+    // Zig cross-targets:
+    const platforms = .{
+        "x86_64-linux",
+        "x86_64-macos",
+        "x86_64-windows",
+        "aarch64-linux",
+        "aarch64-macos",
+    };
+
+    inline for (platforms) |platform| {
+        const cross_target = CrossTarget.parse(.{ .arch_os_abi = platform, .cpu_features = "baseline" }) catch unreachable;
+
+        const lib = b.addStaticLibrary("tb_client", "src/clients/c/tb_client.zig");
+        lib.setMainPkgPath("src");
+        lib.setTarget(cross_target);
+        lib.setBuildMode(mode);
+        lib.linkLibC();
+        lib.pie = true;
+        lib.bundle_compiler_rt = true;
+
+        lib.setOutputDir("src/clients/go/pkg/native/" ++ platform);
+
+        lib.addOptions("tigerbeetle_build_options", options);
+        link_tracer_backend(lib, tracer_backend, cross_target);
+
+        lib.step.dependOn(&install_header.step);
+        lib.step.dependOn(&bindings_step.step);
+        build_step.dependOn(&lib.step);
+    }
+}
+
+fn java_client(
+    b: *std.build.Builder,
+    mode: Mode,
+    dependencies: []const *std.build.Step,
+    options: *std.build.OptionsStep,
+    tracer_backend: config.TracerBackend,
+) void {
+    const build_step = b.step("java_client", "Build Java client shared library");
+
+    for (dependencies) |dependency| {
+        build_step.dependOn(dependency);
+    }
+
+    // Zig cross-targets:
+    const platforms = .{
+        "x86_64-linux-gnu",
+        "x86_64-linux-musl",
+        "x86_64-macos",
+        "aarch64-linux-gnu",
+        "aarch64-linux-musl",
+        "aarch64-macos",
+        "x86_64-windows",
+    };
+
+    inline for (platforms) |platform| {
+        const cross_target = CrossTarget.parse(.{ .arch_os_abi = platform, .cpu_features = "baseline" }) catch unreachable;
+
+        const lib = b.addSharedLibrary("tb_jniclient", "src/clients/java/src/client.zig", .unversioned);
+        lib.setMainPkgPath("src");
+        lib.addPackagePath("jui", "src/clients/java/lib/jui/src/jui.zig");
+        lib.setOutputDir("src/clients/java/src/main/resources/lib/" ++ platform);
+        lib.setTarget(cross_target);
+        lib.setBuildMode(mode);
+        lib.linkLibC();
+
+        if (cross_target.os_tag.? == .windows) {
+            lib.linkSystemLibrary("ws2_32");
+            lib.linkSystemLibrary("advapi32");
+        }
+
+        lib.addOptions("tigerbeetle_build_options", options);
+        link_tracer_backend(lib, tracer_backend, cross_target);
+
+        build_step.dependOn(&lib.step);
+    }
+}
+
+fn dotnet_client(
+    b: *std.build.Builder,
+    mode: Mode,
+    dependencies: []const *std.build.Step,
+    options: *std.build.OptionsStep,
+    tracer_backend: config.TracerBackend,
+) void {
+    const build_step = b.step("dotnet_client", "Build dotnet client shared library");
+
+    for (dependencies) |dependency| {
+        build_step.dependOn(dependency);
+    }
+
+    // Zig cross-targets:
+    const platforms = .{
+        "x86_64-linux-gnu",
+        "x86_64-macos",
+        "x86_64-windows",
+    };
+
+    inline for (platforms) |platform| {
+        const cross_target = CrossTarget.parse(.{ .arch_os_abi = platform, .cpu_features = "baseline" }) catch unreachable;
+
+        const lib = b.addSharedLibrary("tb_client", "src/clients/c/tb_client.zig", .unversioned);
+        lib.setMainPkgPath("src");
+        lib.setOutputDir("src/clients/dotnet/src/TigerBeetle/native/" ++ platform);
+        lib.setTarget(cross_target);
+        lib.setBuildMode(mode);
+        lib.linkLibC();
+
+        if (cross_target.os_tag.? == .windows) {
+            lib.linkSystemLibrary("ws2_32");
+            lib.linkSystemLibrary("advapi32");
+        }
+
+        lib.addOptions("tigerbeetle_build_options", options);
+        link_tracer_backend(lib, tracer_backend, cross_target);
+
+        build_step.dependOn(&lib.step);
     }
 }
