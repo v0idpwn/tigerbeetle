@@ -51,10 +51,9 @@ pub const GoDocs = Docs{
     .install_commands = 
     \\go mod init tbtest
     \\go mod tidy
-            ,
+    ,
 
     .install_sample_file_build_commands = "go build test.go",
-
     .install_sample_file_test_commands = "go run test.go",
 
     .install_documentation = "",
@@ -91,7 +90,7 @@ pub const GoDocs = Docs{
     \\	log.Printf("Error creating client: %s", err)
     \\	return
     \\}
-    \\defer client.Close()"
+    \\defer client.Close()
     ,
 
     .client_object_documentation = 
@@ -104,7 +103,7 @@ pub const GoDocs = Docs{
 
     .create_accounts_example = 
     \\// Create two accounts
-    \\res, err := client.CreateAccounts([]tb_types.Account{
+    \\accountsRes, err := client.CreateAccounts([]tb_types.Account{
     \\	{
     \\		ID:     uint128("1"),
     \\		Ledger: 1,
@@ -121,7 +120,7 @@ pub const GoDocs = Docs{
     \\	return
     \\}
     \\
-    \\for _, err := range res {
+    \\for _, err := range accountsRes {
     \\	log.Printf("Error creating account %d: %s", err.Index, err.Code)
     \\	return
     \\}
@@ -170,6 +169,9 @@ pub const GoDocs = Docs{
     \\	log.Printf("Could not fetch accounts: %s", err)
     \\	return
     \\}
+    \\for _, account := range accounts {
+    \\	log.Println(account)
+    \\}    
     ,
 
     .create_transfers_example = 
@@ -182,13 +184,13 @@ pub const GoDocs = Docs{
     \\	Amount:          10,
     \\}
     \\
-    \\res, err := client.CreateTransfers([]tb_types.Transfer{transfer})
+    \\transfersRes, err := client.CreateTransfers([]tb_types.Transfer{transfer})
     \\if err != nil {
-    \\	log.Printf("Error creating transfer batch %d: %s", i, err)
+    \\	log.Printf("Error creating transfer batch: %s", err)
     \\	return
     \\}
     \\
-    \\for _, err := range res {
+    \\for _, err := range transfersRes {
     \\	log.Printf("Batch transfer at %d failed to create: %s", err.Index, err.Code)
     \\	return
     \\}
@@ -212,4 +214,27 @@ pub const GoDocs = Docs{
     \\./scripts/rebuild_binaries.sh
     \\./zgo.bat test
     ,
+
+    .test_main_prefix = 
+    \\package main
+    \\
+    \\import "log"
+    \\
+    \\import tb "github.com/tigerbeetledb/tigerbeetle-go"
+    \\import tb_types "github.com/tigerbeetledb/tigerbeetle-go/pkg/types"
+    \\
+    \\func uint128(value string) tb_types.Uint128 {
+    \\	x, err := tb_types.HexStringToUint128(value)
+    \\	if err != nil {
+    \\		panic(err)
+    \\	}
+    \\	return x
+    \\}
+    \\
+    \\func main() {
+    ,
+
+    .test_main_suffix = "}",
+
+    .code_format_commands = "gofmt -w -s ./...",
 };

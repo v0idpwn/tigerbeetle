@@ -6,57 +6,6 @@ const node = @import("./node/docs.zig").NodeDocs;
 
 const languages = [_]Docs{ go, node };
 
-const Validator = struct {
-    allocator: std.mem.Allocator,
-    language: Docs,
-
-    fn run_in_docker(self: Validator, cmds: []const u8) !void {
-        var cp = try std.ChildProcess.init(&[_][]const u8{
-            "docker",
-            "run",
-            self.language.test_linux_docker_image,
-            "bash",
-            "-c",
-            cmds,
-            }, self.allocator);
-        var res = try cp.spawnAndWait();
-        switch (res) {
-            .Exited => |code| {
-                try std.testing.expect(code == 0);
-            },
-
-            else => unreachable,
-        }
-    }
-
-    fn build_file_in_docker(self: Validator, file: []const u8) !void {
-        var cmd = std.ArrayList(u8).init(self.allocator);
-        defer cmd.deinit();
-
-        try cmd.writer().print("mkdir /tmp/tests/; cd /tmp/tests/; echo $'{s}' > test.{s}; {s}; {s};", .{
-            file,
-            self.language.extension,
-            self.language.install_commands,
-            self.language.install_sample_file_build_commands,
-        });
-
-        try self.run_in_docker(
-            cmd.items,
-        );
-    }
-
-    fn validate(self: Validator) !void {
-        var buf = std.ArrayList(u8).init(self.allocator);
-
-        // Test the sample file
-        try self.build_file_in_docker(self.language.install_sample_file);
-
-        // Test creating accounts
-        try self.build_file_in_docker("todo");
-        buf.clearRetainingCapacity();
-    }
-};
-
 const MarkdownWriter = struct {
     buf: *std.ArrayList(u8),
     writer: std.ArrayList(u8).Writer,
@@ -114,7 +63,6 @@ const MarkdownWriter = struct {
         var cursor: usize = 0;
         while (cursor < fSize) {
             var maxCanRead = if (fSize - cursor > 4096) 4096 else fSize - cursor;
-            //
             _ = try file.read(buf[0..maxCanRead]);
             if (std.mem.eql(u8, buf[0..], mw.buf.items[cursor..maxCanRead])) {
                 return false;
@@ -124,6 +72,9 @@ const MarkdownWriter = struct {
         return true;
     }
 
+    // save() only actually writes the buffer to disk if it has
+    // changed compared to what's on disk, so that file modify time stays
+    // reasonable.
     fn save(mw: *MarkdownWriter, filename: []const u8) !void {
         var diff = try mw.diffOnDisk(filename);
         if (!diff) {
@@ -138,17 +89,112 @@ const MarkdownWriter = struct {
     }
 };
 
-pub fn main() !void {
-    for (languages) |language| {
-        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        defer arena.deinit();
+const Generator = struct {
+    allocator: std.mem.Allocator,
+    language: Docs,
 
-        const allocator = arena.allocator();
-        var buf = std.ArrayList(u8).init(allocator);
-        var mw = MarkdownWriter.init(&buf);
+    fn run_in_docker(self: Generator, cmds: []const u8, stdout: ?std.fs.File) !void {
+        var cp = try std.ChildProcess.init(&[_][]const u8{
+            "docker",
+            "run",
+            self.language.test_linux_docker_image,
+            "bash",
+            "-c",
+            cmds,
+        }, self.allocator);
+        cp.stdout = stdout;
+        var res = try cp.spawnAndWait();
+        switch (res) {
+            .Exited => |code| {
+                if (code != 0) {
+                    std.process.exit(1);
+                }
+            },
 
-        var validator = Validator{.allocator = allocator, .language = language};
-        try validator.validate();
+            else => unreachable,
+        }
+    }
+
+    fn run_with_file_in_docker(self: Generator, file: []const u8, to_run: []const u8, stdout: ?std.fs.File) !void {
+        var cmd = std.ArrayList(u8).init(self.allocator);
+        defer cmd.deinit();
+
+        try cmd.writer().print("mkdir /tmp/tests/; cd /tmp/tests/; echo $'{s}' > test.{s}; {s}; {s};", .{
+            file,
+            self.language.extension,
+            self.language.install_commands,
+            to_run,
+        });
+
+        try self.run_in_docker(
+            cmd.items,
+            stdout,
+        );
+    }
+
+    fn build_file_in_docker(self: Generator, file: []const u8) !void {
+        try self.run_with_file_in_docker(
+            file,
+            self.language.install_sample_file_build_commands,
+            null,
+        );
+    }
+
+    fn validate(self: Generator) !void {
+        // Test the sample file
+        try self.build_file_in_docker(self.language.install_sample_file);
+
+        // Test major sample code
+        var sample = try self.make_aggregate_sample();
+        try self.build_file_in_docker(sample);
+    }
+
+    // This will not include every snippet but it includes as much as //
+    // reasonable. Both so we can type-check as much as possible and also so
+    // we can produce a building sample file for READMEs.
+    fn make_aggregate_sample(self: Generator) ![]const u8 {
+        return try std.fmt.allocPrint(
+            self.allocator,
+            "{s}\n{s}\n{s}\n{s}\n{s}\n{s}",
+            .{
+                self.language.test_main_prefix,
+                self.language.client_object_example,
+                self.language.create_accounts_example,
+                self.language.lookup_accounts_example,
+                self.language.create_transfers_example,
+                self.language.test_main_suffix,
+            },
+        );
+    }
+
+    fn make_and_format_aggregate_sample(self: Generator) ![]const u8 {
+        var sample = try self.make_aggregate_sample();
+
+        var formatted_file_name = "/tmp/sample_file";
+        const formatted_file = try std.fs.cwd().openFile(formatted_file_name, .{ .write = true });
+
+        try self.run_with_file_in_docker(
+            sample,
+            try std.fmt.allocPrint(self.allocator, " ( {s} ) > /dev/null && cat /tmp/tests/test.{s}", .{
+                self.language.code_format_commands,
+                self.language.extension,
+            }),
+            formatted_file,
+        );
+
+        const file_size = try formatted_file.getEndPos();
+        var formatted = try self.allocator.alloc(u8, file_size);
+        _ = try formatted_file.read(formatted);
+
+        // Temp file cleanup
+        formatted_file.close();
+        try std.fs.cwd().deleteFile(formatted_file_name);
+
+        return formatted;
+    }
+
+    fn generate(self: Generator, mw: *MarkdownWriter) !void {
+        var language = self.language;
 
         mw.paragraph(
             \\This file is generated by
@@ -276,6 +322,11 @@ pub fn main() !void {
         );
         mw.code(language.markdown_name, language.batch_example);
 
+        // Full sample
+        mw.header(2, "Complete sample file");
+        var formatted_sample = try self.make_and_format_aggregate_sample();
+        mw.code(language.markdown_name, formatted_sample);
+
         mw.header(2, "Development Setup");
         // Bash setup
         mw.header(3, "On Linux and macOS");
@@ -286,5 +337,21 @@ pub fn main() !void {
         mw.commands(language.developer_setup_windows_commands);
 
         try mw.save(language.readme);
+    }
+};
+
+pub fn main() !void {
+    for (languages) |language| {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+
+        const allocator = arena.allocator();
+        var buf = std.ArrayList(u8).init(allocator);
+        var mw = MarkdownWriter.init(&buf);
+
+        var generator = Generator{ .allocator = allocator, .language = language };
+        try generator.validate();
+
+        try generator.generate(&mw);
     }
 }

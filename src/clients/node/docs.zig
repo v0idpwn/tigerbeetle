@@ -2,34 +2,26 @@ const Docs = @import("../docs_types.zig").Docs;
 
 pub const NodeDocs = Docs{
     .readme = "node/README.md",
-
     .markdown_name = "javascript",
     .extension = "js",
-
     .test_linux_docker_image = "node:18",
-
     .name = "tigerbeetle-node",
     .description = 
     \\The TigerBeetle client for Node.js.
     ,
-
     .prerequisites = 
     \\* NodeJS >= `14`. _(If the correct version is not installed, an installation error will occur)_
     \\
     \\> Your operating system should be Linux (kernel >= v5.6) or macOS.
     \\> Windows support is not yet available.
     ,
-
     .install_sample_file = 
-    \\const Client = require("tigerbeetle-node");
+    \\const { createClient } = require("tigerbeetle-node");
     \\console.log("Import ok!");
     ,
-
     .install_sample_file_build_commands = "npm install typescript @types/node && npx tsc --allowJs --noEmit test.js",
     .install_sample_file_test_commands = "node run test.js",
-
     .install_commands = "npm install tigerbeetle-node",
-
     .install_documentation = 
     \\If you run into issues, check out the distribution-specific install
     \\steps that are run in CI to test support:
@@ -49,16 +41,13 @@ pub const NodeDocs = Docs{
     \\constructor to get a `BigInt` from it. For example, `1n` is the same as
     \\`BigInt(1)`.
     ,
-
     .examples = "",
-
     .no_batch_example = 
     \\for (let i = 0; i < transfers.len; i++) {
     \\  const errors = client.createTransfers(transfers[i]);
     \\  // error handling omitted
     \\}
     ,
-
     .batch_example = 
     \\const BATCH_SIZE = 8191;
     \\for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
@@ -72,9 +61,7 @@ pub const NodeDocs = Docs{
     \\  replica_addresses: ['3001', '3002', '3003']
     \\});
     ,
-
     .client_object_documentation = "",
-
     .create_accounts_example = 
     \\const account = {
     \\  id: 137n, // u128
@@ -96,9 +83,7 @@ pub const NodeDocs = Docs{
     \\  console.log(CreateAccountError[errors[0].code]);
     \\}
     ,
-
     .create_accounts_documentation = "",
-
     .account_flags_details = 
     \\To toggle behavior for an account, combine enum values stored in the
     \\`AccountFlags` object (in TypeScript it is an actual enum) with
@@ -118,31 +103,27 @@ pub const NodeDocs = Docs{
     \\// Create the account
     \\const errors = client.createAccounts([account0, account1]);
     \\```
-        ,
-
-    .create_accounts_errors_example =
-\\const errors = await client.createAccounts([account1, account2, account3]);
-\\
-\\// errors = [{ index: 1, code: 1 }];
-\\for (const error of errors) {
-\\  switch (error.code) {
-\\    case CreateAccountError.exists:
-\\      console.error(`Batch account at ${error.index} already exists.`);
-\\	  break;
-\\    default:
-\\      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
-\\  }
-\\}
-        ,
-
-    .create_accounts_errors_documentation =
-\\To handle errors you can either 1) exactly match error codes returned
-\\from `client.createAccounts` with enum values in the
-\\`CreateAccountError` object, or you can 2) look up the error code in
-\\the `CreateAccountError` object for a human-readable string.
-
-        ,
-    
+    ,
+    .create_accounts_errors_example = 
+    \\const errors = await client.createAccounts([account1, account2, account3]);
+    \\
+    \\// errors = [{ index: 1, code: 1 }];
+    \\for (const error of errors) {
+    \\  switch (error.code) {
+    \\    case CreateAccountError.exists:
+    \\      console.error(`Batch account at ${error.index} already exists.`);
+    \\	  break;
+    \\    default:
+    \\      console.error(`Batch account at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
+    \\  }
+    \\}
+    ,
+    .create_accounts_errors_documentation = 
+    \\To handle errors you can either 1) exactly match error codes returned
+    \\from `client.createAccounts` with enum values in the
+    \\`CreateAccountError` object, or you can 2) look up the error code in
+    \\the `CreateAccountError` object for a human-readable string.
+    ,
     .lookup_accounts_example = 
     \\// account 137n exists, 138n does not
     \\const accounts = await client.lookupAccounts([137n, 138n]);
@@ -162,7 +143,6 @@ pub const NodeDocs = Docs{
     \\ * }]
     \\ */
     ,
-
     .create_transfers_example = 
     \\const transfer = {
     \\  id: 1n, // u128
@@ -193,7 +173,6 @@ pub const NodeDocs = Docs{
     \\}
     ,
     .create_transfers_documentation = "",
-
     .create_transfers_errors_example = 
     \\const errors = await client.createTransfers([transfer1, transfer2, transfer3]);
     \\
@@ -208,19 +187,26 @@ pub const NodeDocs = Docs{
     \\  }
     \\}
     ,
-
     .create_transfers_errors_documentation = 
     \\To handle errors you can either 1) exactly match error codes returned
     \\from `client.createTransfers` with enum values in the
     \\`CreateTransferError` object, or you can 2) look up the error code in
     \\the `CreateTransferError` object for a human-readable string.
     ,
-
     .developer_setup_bash_commands = 
     \\npm install --include dev # This will automatically install and build everything you need.
     ,
-
     .developer_setup_windows_commands = 
     \\npm install --include dev # This will automatically install and build everything you need.
     ,
+    .test_main_prefix = 
+    \\const { createClient } = require("tigerbeetle-node");
+    \\
+    \\async function main() {
+    ,
+    .test_main_suffix = 
+    \\}
+    \\main().then(() => process.exit(0)).catch((e) => throw e);
+    ,
+    .code_format_commands = "npm install prettier && npx prettier --write .",
 };

@@ -38,4 +38,9 @@ pub const Docs = struct {
     developer_setup_bash_commands: []const u8,
     developer_setup_windows_commands: []const u8,
     test_linux_docker_image: []const u8,
+
+    test_main_prefix: []const u8,
+    test_main_suffix: []const u8,
+
+    code_format_commands: []const u8,
 };
