@@ -127,22 +127,9 @@ pub const NodeDocs = Docs{
     .lookup_accounts_example = 
     \\// account 137n exists, 138n does not
     \\const accounts = await client.lookupAccounts([137n, 138n]);
-    \\/* console.log(accounts);
-    \\ * [{
-    \\ *   id: 137n,
-    \\ *   user_data: 0n,
-    \\ *   reserved: Buffer,
-    \\ *   ledger: 1,
-    \\ *   code: 718,
-    \\ *   flags: 0,
-    \\ *   debits_pending: 0n,
-    \\ *   debits_posted: 0n,
-    \\ *   credits_pending: 0n,
-    \\ *   credits_posted: 0n,
-    \\ *   timestamp: 1623062009212508993n,
-    \\ * }]
-    \\ */
+    \\console.log(accounts);
     ,
+
     .create_transfers_example = 
     \\const transfer = {
     \\  id: 1n, // u128

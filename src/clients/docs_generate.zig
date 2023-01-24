@@ -93,15 +93,18 @@ const Generator = struct {
     allocator: std.mem.Allocator,
     language: Docs,
 
-    fn run_in_docker(self: Generator, cmds: []const u8, stdout: ?std.fs.File) !void {
-        var cp = try std.ChildProcess.init(&[_][]const u8{
+    fn run_in_docker(self: Generator, cmds: []const u8, mount: []const u8, stdout: ?std.fs.File) !void {
+        var full_cmd = &[_][]const u8{
             "docker",
             "run",
+            "-v",
+            mount,
             self.language.test_linux_docker_image,
             "bash",
             "-c",
             cmds,
-        }, self.allocator);
+        };
+        var cp = try std.ChildProcess.init(full_cmd, self.allocator);
         cp.stdout = stdout;
         var res = try cp.spawnAndWait();
         switch (res) {
@@ -116,20 +119,32 @@ const Generator = struct {
     }
 
     fn run_with_file_in_docker(self: Generator, file: []const u8, to_run: []const u8, stdout: ?std.fs.File) !void {
+        var tmp_file_name = try std.fmt.allocPrint(
+            self.allocator,
+            "/tmp/test.{s}",
+            .{self.language.extension},
+        );
+        var tmp_file = try std.fs.cwd().createFile(tmp_file_name, .{
+            .truncate = true,
+        });
+        _ = try tmp_file.write(file);
+
         var cmd = std.ArrayList(u8).init(self.allocator);
         defer cmd.deinit();
 
-        try cmd.writer().print("mkdir /tmp/tests/; cd /tmp/tests/; echo $'{s}' > test.{s}; {s}; {s};", .{
-            file,
-            self.language.extension,
+        try cmd.writer().print("cd /tmp/wrk && {s} && {s}", .{
             self.language.install_commands,
             to_run,
         });
 
         try self.run_in_docker(
             cmd.items,
+            "/tmp:/tmp/wrk",
             stdout,
         );
+
+        tmp_file.close();
+        try std.fs.cwd().deleteFile(tmp_file_name);
     }
 
     fn build_file_in_docker(self: Generator, file: []const u8) !void {
@@ -171,7 +186,9 @@ const Generator = struct {
         var sample = try self.make_aggregate_sample();
 
         var formatted_file_name = "/tmp/sample_file";
-        const formatted_file = try std.fs.cwd().openFile(formatted_file_name, .{ .write = true });
+        var formatted_file = try std.fs.cwd().createFile(formatted_file_name, .{
+            .truncate = true,
+        });
 
         try self.run_with_file_in_docker(
             sample,
@@ -182,12 +199,18 @@ const Generator = struct {
             formatted_file,
         );
 
+        // Reopen for reading
+        formatted_file.close();
+        formatted_file = try std.fs.cwd().openFile(formatted_file_name, .{
+            .read = true,
+        });
+
         const file_size = try formatted_file.getEndPos();
         var formatted = try self.allocator.alloc(u8, file_size);
         _ = try formatted_file.read(formatted);
 
         // Temp file cleanup
-        formatted_file.close();
+
         try std.fs.cwd().deleteFile(formatted_file_name);
 
         return formatted;

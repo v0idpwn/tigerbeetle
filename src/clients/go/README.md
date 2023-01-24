@@ -70,7 +70,7 @@ if err != nil {
 	log.Printf("Error creating client: %s", err)
 	return
 }
-defer client.Close()"
+defer client.Close()
 ```
 
 `NewClient` takes three arguments: a unique `uint32`
@@ -91,7 +91,7 @@ reference](https://docs.tigerbeetle.com/reference/accounts).
 
 ```go
 // Create two accounts
-res, err := client.CreateAccounts([]tb_types.Account{
+accountsRes, err := client.CreateAccounts([]tb_types.Account{
 	{
 		ID:     uint128("1"),
 		Ledger: 1,
@@ -108,8 +108,8 @@ if err != nil {
 	return
 }
 
-for _, err := range res {
-	log.Printf("Error creating account %d: %s", err.Index, err.Code)
+for _, err := range accountsRes {
+	log.Printf("Error creating account %d: %s", err.Index, err.Result)
 	return
 }
 ```
@@ -142,7 +142,7 @@ if err != nil {
 }
 
 for _, err := range res {
-	log.Printf("Error creating account %d: %s", err.Index, err.Code)
+	log.Printf("Error creating account %d: %s", err.Index, err.Result)
 	return
 }
 const errors = await client.createAccounts([account1, account2, account3]);
@@ -181,6 +181,9 @@ if err != nil {
 	log.Printf("Could not fetch accounts: %s", err)
 	return
 }
+for _, account := range accounts {
+	log.Println(account)
+}    
 ```
 
 ## Create Transfers
@@ -236,6 +239,8 @@ for i := 0; i < len(transfers); i += BATCH_SIZE {
   // error handling omitted
 }
 ```
+
+## Complete sample file
 
 ## Development Setup
 

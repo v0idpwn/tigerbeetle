@@ -21,7 +21,7 @@ $ npm install tigerbeetle-node
 Create `test.js` and copy this into it:
 
 ```javascript
-const Client = require("tigerbeetle-node");
+const { createClient } = require("tigerbeetle-node");
 console.log("Import ok!");
 ```
 
@@ -161,21 +161,7 @@ distinguish accounts.
 ```javascript
 // account 137n exists, 138n does not
 const accounts = await client.lookupAccounts([137n, 138n]);
-/* console.log(accounts);
- * [{
- *   id: 137n,
- *   user_data: 0n,
- *   reserved: Buffer,
- *   ledger: 1,
- *   code: 718,
- *   flags: 0,
- *   debits_pending: 0n,
- *   debits_posted: 0n,
- *   credits_pending: 0n,
- *   credits_posted: 0n,
- *   timestamp: 1623062009212508993n,
- * }]
- */
+console.log(accounts);
 ```
 
 ## Create Transfers
@@ -247,6 +233,8 @@ for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
   // error handling omitted
 }
 ```
+
+## Complete sample file
 
 ## Development Setup
 

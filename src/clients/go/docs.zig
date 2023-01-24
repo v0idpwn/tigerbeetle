@@ -121,7 +121,7 @@ pub const GoDocs = Docs{
     \\}
     \\
     \\for _, err := range accountsRes {
-    \\	log.Printf("Error creating account %d: %s", err.Index, err.Code)
+    \\	log.Printf("Error creating account %d: %s", err.Index, err.Result)
     \\	return
     \\}
     ,
@@ -140,7 +140,7 @@ pub const GoDocs = Docs{
     \\}
     \\
     \\for _, err := range res {
-    \\	log.Printf("Error creating account %d: %s", err.Index, err.Code)
+    \\	log.Printf("Error creating account %d: %s", err.Index, err.Result)
     \\	return
     \\}
     \\const errors = await client.createAccounts([account1, account2, account3]);
@@ -191,7 +191,7 @@ pub const GoDocs = Docs{
     \\}
     \\
     \\for _, err := range transfersRes {
-    \\	log.Printf("Batch transfer at %d failed to create: %s", err.Index, err.Code)
+    \\	log.Printf("Batch transfer at %d failed to create: %s", err.Index, err.Result)
     \\	return
     \\}
     ,
@@ -236,5 +236,5 @@ pub const GoDocs = Docs{
 
     .test_main_suffix = "}",
 
-    .code_format_commands = "gofmt -w -s ./...",
+    .code_format_commands = "gofmt -w -s *.go",
 };
