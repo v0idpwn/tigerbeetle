@@ -1,8 +1,18 @@
+//! Raw configuration values.
+//!
+//! Code which needs these values should use `constants.zig` instead.
+//! Configuration values are set from a combination of:
+//! - default values
+//! - `root.tigerbeetle_config`
+//! - `@import("tigerbeetle_options")`
+
 const builtin = @import("builtin");
 const std = @import("std");
 
-const build_options = @import("tigerbeetle_build_options");
 const root = @import("root");
+// Allow setting build-time config either via `build.zig` `Options`, or via a struct in the root file.
+const build_options =
+    if (@hasDecl(root, "vsr_options")) root.vsr_options else @import("vsr_options");
 
 const vsr = @import("vsr.zig");
 const sector_size = @import("constants.zig").sector_size;
@@ -25,6 +35,7 @@ pub const Config = struct {
 const ConfigProcess = struct {
     log_level: std.log.Level = .info,
     tracer_backend: TracerBackend = .none,
+    hash_log_mode: HashLogMode = .none,
     verify: bool,
     port: u16 = 3001,
     address: []const u8 = "127.0.0.1",
@@ -68,6 +79,8 @@ const ConfigProcess = struct {
 const ConfigCluster = struct {
     cache_line_size: comptime_int = 64,
     clients_max: usize,
+    pipeline_prepare_queue_max: usize = 8,
+    view_change_headers_max: usize = 8,
     quorum_replication_max: u8 = 3,
     journal_slot_count: usize = 1024,
     message_size_max: usize = 1 * 1024 * 1024,
@@ -80,7 +93,6 @@ const ConfigCluster = struct {
     lsm_batch_multiple: comptime_int = 4,
     lsm_snapshots_max: usize = 32,
     lsm_value_to_key_layout_ratio_min: comptime_int = 16,
-    state_machine: StateMachine = .accounting,
 
     /// The WAL requires at least two sectors of redundant headers — otherwise we could lose them all to
     /// a single torn write. A replica needs at least one valid redundant header to determine an
@@ -91,7 +103,7 @@ const ConfigCluster = struct {
     pub const clients_max_min = 1;
 
     /// The smallest possible message_size_max (for use in the simulator to improve performance).
-    /// The message body must have room for pipeline_max headers in the DVC.
+    /// The message body must have room for pipeline_prepare_queue_max headers in the DVC.
     pub fn message_size_max_min(clients_max: usize) usize {
         return std.math.max(
             sector_size,
@@ -118,9 +130,10 @@ pub const TracerBackend = enum {
     tracy,
 };
 
-pub const StateMachine = enum {
-    accounting,
-    testing,
+pub const HashLogMode = enum {
+    none,
+    create,
+    check,
 };
 
 pub const configs = struct {
@@ -166,10 +179,12 @@ pub const configs = struct {
             .verify = true,
         },
         .cluster = .{
-            .clients_max = 4,
+            .clients_max = 4 + 3,
+            .pipeline_prepare_queue_max = 4,
+            .view_change_headers_max = 4,
             .journal_slot_count = Config.Cluster.journal_slot_count_min,
-            .message_size_max = Config.Cluster.message_size_max_min(2),
-            .storage_size_max = 1024 * 1024 * 1024,
+            .message_size_max = Config.Cluster.message_size_max_min(4),
+            .storage_size_max = 4 * 1024 * 1024 * 1024,
 
             .block_size = sector_size,
             .lsm_growth_factor = 4,
@@ -196,13 +211,6 @@ pub const configs = struct {
             .test_min => test_min,
         };
 
-        base.cluster.state_machine = if (@hasDecl(root, "decode_events"))
-            // TODO(DJ) This is a hack to work around the absense of tigerbeetle_build_options.
-            // This should be removed once the node client is built using `zig build`.
-            .accounting
-        else
-            @intToEnum(StateMachine, @enumToInt(build_options.config_cluster_state_machine));
-
         // TODO Use additional build options to overwrite other fields.
         base.process.tracer_backend = if (@hasDecl(root, "tracer_backend"))
             // TODO(jamii)
@@ -213,6 +221,13 @@ pub const configs = struct {
             // Zig's `addOptions` reuses the type, but redeclares it — identical structurally,
             // but a different type from a nominal typing perspective.
             @intToEnum(TracerBackend, @enumToInt(build_options.tracer_backend));
+
+        base.process.hash_log_mode = if (@hasDecl(root, "decode_events"))
+            // TODO(DJ) This is a hack to work around the absense of tigerbeetle_build_options.
+            // This should be removed once the node client is built using `zig build`.
+            .none
+        else
+            @intToEnum(HashLogMode, @enumToInt(build_options.hash_log_mode));
 
         break :current base;
     };

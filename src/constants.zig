@@ -1,3 +1,7 @@
+//! Constants are the configuration that the code actually imports — they include:
+//! - all of the configuration values (flattened)
+//! - derived configuration values,
+
 const std = @import("std");
 const assert = std.debug.assert;
 const vsr = @import("vsr.zig");
@@ -18,14 +22,11 @@ else
 // Default is `.none`.
 pub const tracer_backend = config.process.tracer_backend;
 
+// Which mode to use for ./testing/hash_log.zig.
+pub const hash_log_mode = config.process.hash_log_mode;
+
 /// The maximum number of replicas allowed in a cluster.
 pub const replicas_max = 6;
-
-pub const state_machine = config.cluster.state_machine;
-pub const StateMachineType = switch (config.cluster.state_machine) {
-    .accounting => @import("state_machine.zig").StateMachineType,
-    .testing => @import("test/state_machine.zig").StateMachineType,
-};
 
 /// The maximum number of clients allowed per cluster, where each client has a unique 128-bit ID.
 /// This impacts the amount of memory allocated at initialization by the server.
@@ -131,7 +132,7 @@ comptime {
     assert(journal_slot_count >= Config.Cluster.journal_slot_count_min);
     assert(journal_slot_count >= lsm_batch_multiple * 2);
     assert(journal_slot_count % lsm_batch_multiple == 0);
-    assert(journal_size_max == journal_size_headers + journal_size_prepares);
+    assert(journal_slot_count > pipeline_prepare_queue_max);
 
     assert(journal_size_max == journal_size_headers + journal_size_prepares);
 }
@@ -156,12 +157,50 @@ comptime {
     assert(message_size_max >= @sizeOf(vsr.Header));
     assert(message_size_max >= sector_size);
     assert(message_size_max >= Config.Cluster.message_size_max_min(clients_max));
+
+    // Ensure that DVC/SV messages can fit all necessary headers.
+    assert(message_body_size_max >= view_change_headers_max * @sizeOf(vsr.Header));
 }
 
 /// The maximum number of Viewstamped Replication prepare messages that can be inflight at a time.
 /// This is immutable once assigned per cluster, as replicas need to know how many operations might
 /// possibly be uncommitted during a view change, and this must be constant for all replicas.
-pub const pipeline_max = clients_max;
+pub const pipeline_prepare_queue_max = config.cluster.pipeline_prepare_queue_max;
+
+/// The maximum number of Viewstamped Replication request messages that can be queued at a primary,
+/// waiting to prepare.
+// TODO(Zig): After 0.10, change this to simply "clients_max -| pipeline_prepare_queue_max".
+// In Zig 0.9 compilation fails with "operation caused overflow" despite the saturating subtraction.
+// See: https://github.com/ziglang/zig/issues/10870
+pub const pipeline_request_queue_max =
+    if (clients_max < pipeline_prepare_queue_max)
+    0
+else
+    clients_max - pipeline_prepare_queue_max;
+
+comptime {
+    // A prepare-queue capacity larger than clients_max is wasted.
+    assert(pipeline_prepare_queue_max <= clients_max);
+    // A total queue capacity larger than clients_max is wasted.
+    assert(pipeline_prepare_queue_max + pipeline_request_queue_max <= clients_max);
+    assert(pipeline_prepare_queue_max > 0);
+    assert(pipeline_request_queue_max >= 0);
+}
+
+/// The number of prepare headers to include in the body of a DVC/SV.
+///
+/// CRITICAL:
+/// We must provide enough headers to cover all uncommitted headers so that the new
+/// primary (if we are in a view change) can decide whether to discard uncommitted headers
+/// that cannot be repaired because they are gaps. See DVCQuorum for more detail.
+pub const view_change_headers_max = config.cluster.view_change_headers_max;
+
+comptime {
+    assert(view_change_headers_max > 0);
+    assert(view_change_headers_max >= pipeline_prepare_queue_max);
+    assert(view_change_headers_max <= journal_slot_count);
+    assert(view_change_headers_max <= @divFloor(message_body_size_max, @sizeOf(vsr.Header)));
+}
 
 /// The minimum and maximum amount of time in milliseconds to wait before initiating a connection.
 /// Exponential backoff and jitter are applied within this range.
@@ -263,7 +302,7 @@ pub const iops_write_max = journal_iops_write_max;
 /// The maximum number of concurrent WAL read I/O operations to allow at once.
 pub const journal_iops_read_max = config.process.journal_iops_read_max;
 /// The maximum number of concurrent WAL write I/O operations to allow at once.
-/// Ideally this is at least as high as pipeline_max, but it is safe to be lower.
+/// Ideally this is at least as high as pipeline_prepare_queue_max, but it is safe to be lower.
 pub const journal_iops_write_max = config.process.journal_iops_write_max;
 
 /// The number of redundant copies of the superblock in the superblock storage zone.

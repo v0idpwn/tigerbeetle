@@ -151,7 +151,7 @@ test "format" {
     const superblock_zone_size = @import("./superblock.zig").superblock_zone_size;
     const data_file_size_min = @import("./superblock.zig").data_file_size_min;
     const MessagePool = @import("../message_pool.zig").MessagePool;
-    const Storage = @import("../test/storage.zig").Storage;
+    const Storage = @import("../testing/storage.zig").Storage;
     const SuperBlock = vsr.SuperBlockType(Storage);
     const allocator = std.testing.allocator;
     const cluster = 0;
@@ -194,7 +194,7 @@ test "format" {
         try std.testing.expectEqual(sector.vsr_state.commit_min, 0);
         try std.testing.expectEqual(sector.vsr_state.commit_max, 0);
         try std.testing.expectEqual(sector.vsr_state.view, 0);
-        try std.testing.expectEqual(sector.vsr_state.view_normal, 0);
+        try std.testing.expectEqual(sector.vsr_state.log_view, 0);
     }
 
     // Verify the WAL headers and prepares zones.

@@ -4,7 +4,7 @@ const math = std.math;
 const assert = std.debug.assert;
 
 const constants = @import("../constants.zig");
-const div_ceil = @import("../util.zig").div_ceil;
+const div_ceil = @import("../stdx.zig").div_ceil;
 const SetAssociativeCache = @import("set_associative_cache.zig").SetAssociativeCache;
 
 /// Range queries are not supported on the TableMutable, it must first be made immutable.
@@ -42,6 +42,13 @@ pub fn TableMutableType(comptime Table: type) type {
 
         value_count_max: u32,
         values: Values = .{},
+
+        /// Rather than using values.count(), we count how many values we could have had if every
+        /// operation had been on a different key. This means that mistakes in calculating
+        /// commit_entries_max are much easier to catch when fuzzing, rather than requiring very
+        /// specific workloads.
+        /// Invariant: value_count_worst_case <= value_count_max
+        value_count_worst_case: u32 = 0,
 
         /// This is used to accelerate point lookups and is not used for range queries.
         /// Secondary index trees used only for range queries can therefore set this to null.
@@ -98,6 +105,8 @@ pub fn TableMutableType(comptime Table: type) type {
         }
 
         pub fn put(table: *TableMutable, value: *const Value) void {
+            assert(table.value_count_worst_case < table.value_count_max);
+            table.value_count_worst_case += 1;
             switch (usage) {
                 .secondary_index => {
                     const existing = table.values.fetchRemove(value.*);
@@ -123,6 +132,8 @@ pub fn TableMutableType(comptime Table: type) type {
         }
 
         pub fn remove(table: *TableMutable, value: *const Value) void {
+            assert(table.value_count_worst_case < table.value_count_max);
+            table.value_count_worst_case += 1;
             switch (usage) {
                 .secondary_index => {
                     const existing = table.values.fetchRemove(value.*);
@@ -152,11 +163,12 @@ pub fn TableMutableType(comptime Table: type) type {
         /// assumes that none of the batch's keys are already in `table.values`.
         pub fn can_commit_batch(table: *TableMutable, batch_count: u32) bool {
             assert(batch_count <= table.value_count_max);
-            return (table.count() + batch_count) <= table.value_count_max;
+            return (table.value_count_worst_case + batch_count) <= table.value_count_max;
         }
 
         pub fn clear(table: *TableMutable) void {
             assert(table.values.count() > 0);
+            table.value_count_worst_case = 0;
             table.values.clearRetainingCapacity();
             assert(table.values.count() == 0);
         }
@@ -186,7 +198,7 @@ pub fn TableMutableType(comptime Table: type) type {
                     if (tombstone(value)) {
                         cache.remove(key_from_value(value));
                     } else {
-                        cache.insert(key_from_value(value)).* = value.*;
+                        cache.insert(value);
                     }
                 }
             }

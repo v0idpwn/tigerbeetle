@@ -8,12 +8,13 @@ const vsr = @import("../vsr.zig");
 const binary_search = @import("binary_search.zig");
 const bloom_filter = @import("bloom_filter.zig");
 
-const util = @import("../util.zig");
-const div_ceil = util.div_ceil;
+const stdx = @import("../stdx.zig");
+const div_ceil = stdx.div_ceil;
 const eytzinger = @import("eytzinger.zig").eytzinger;
 const snapshot_latest = @import("tree.zig").snapshot_latest;
 
 const BlockType = @import("grid.zig").BlockType;
+const alloc_block = @import("grid.zig").alloc_block;
 const TableInfoType = @import("manifest.zig").TableInfoType;
 
 pub const TableUsage = enum {
@@ -484,13 +485,13 @@ pub fn TableType(
             data_blocks_in_filter: u32 = 0,
 
             pub fn init(allocator: mem.Allocator) !Builder {
-                const index_block = try allocator.alignedAlloc(u8, constants.sector_size, block_size);
+                const index_block = try alloc_block(allocator);
                 errdefer allocator.free(index_block);
 
-                const filter_block = try allocator.alignedAlloc(u8, constants.sector_size, block_size);
+                const filter_block = try alloc_block(allocator);
                 errdefer allocator.free(filter_block);
 
-                const data_block = try allocator.alignedAlloc(u8, constants.sector_size, block_size);
+                const data_block = try alloc_block(allocator);
                 errdefer allocator.free(data_block);
 
                 return Builder{
@@ -527,7 +528,7 @@ pub fn TableType(
                 const values_max = data_block_values(builder.data_block);
                 assert(values_max.len == data.value_count_max);
 
-                util.copy_disjoint(.inexact, Value, values_max[builder.value..], values);
+                stdx.copy_disjoint(.inexact, Value, values_max[builder.value..], values);
                 builder.value += @intCast(u32, values.len);
 
                 for (values) |*value| {
@@ -596,8 +597,6 @@ pub fn TableType(
 
                 const values_padding = mem.sliceAsBytes(values_max[builder.value..]);
                 const block_padding = block[data.padding_offset..][0..data.padding_size];
-                mem.set(u8, values_padding, 0);
-                mem.set(u8, block_padding, 0);
                 assert(compare_keys(key_from_value(&values[values.len - 1]), key_max) == .eq);
 
                 const header_bytes = block[0..@sizeOf(vsr.Header)];
@@ -711,17 +710,6 @@ pub fn TableType(
                 ));
 
                 const index_block = builder.index_block;
-
-                const index_data_keys_padding = index_data_keys(index_block)[builder.data_block_count..];
-                const index_data_keys_padding_bytes = mem.sliceAsBytes(index_data_keys_padding);
-                mem.set(u8, index_data_keys_padding_bytes, 0);
-                mem.set(u64, index_data_addresses(index_block)[builder.data_block_count..], 0);
-                mem.set(u128, index_data_checksums(index_block)[builder.data_block_count..], 0);
-
-                mem.set(u64, index_filter_addresses(index_block)[builder.filter_block_count..], 0);
-                mem.set(u128, index_filter_checksums(index_block)[builder.filter_block_count..], 0);
-
-                mem.set(u8, index_block[index.padding_offset..][0..index.padding_size], 0);
 
                 const header_bytes = index_block[0..@sizeOf(vsr.Header)];
                 const header = mem.bytesAsValue(vsr.Header, header_bytes);
@@ -992,7 +980,7 @@ pub fn TableType(
             key_min: ?Key,
             key_max: ?Key,
         ) void {
-            if (Storage != @import("../test/storage.zig").Storage)
+            if (Storage != @import("../testing/storage.zig").Storage)
                 // Too complicated to do async verification
                 return;
 

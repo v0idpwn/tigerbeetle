@@ -61,8 +61,13 @@ pub fn CompactionType(
         const BlockPtrConst = Grid.BlockPtrConst;
         const BlockWrite = struct {
             write: Grid.Write = undefined,
-            block: BlockPtr = undefined,
-            writable: bool = false,
+            block: *BlockPtr = undefined,
+            state: BlockState = .building,
+        };
+        const BlockState = enum {
+            building,
+            writable,
+            writing,
         };
 
         const Manifest = ManifestType(Table, Storage);
@@ -241,9 +246,9 @@ pub fn CompactionType(
                 .level_a_input = if (table_a) |table| table.* else null,
             };
 
-            assert(!compaction.index.writable);
-            assert(!compaction.filter.writable);
-            assert(!compaction.data.writable);
+            assert(compaction.index.state == .building);
+            assert(compaction.filter.state == .building);
+            assert(compaction.data.state == .building);
 
             // TODO Implement manifest.move_table() optimization if there's only range.table_count == 1.
             // This would do update_tables + insert_tables inline without going through the iterators.
@@ -342,6 +347,14 @@ pub fn CompactionType(
             const write_callback = struct {
                 fn callback(write: *Grid.Write) void {
                     const block_write = @fieldParentPtr(BlockWrite, "write", write);
+
+                    assert(block_write.state == .writing);
+                    block_write.state = .building;
+
+                    if (constants.verify) {
+                        // We've finished writing so the block should now be zeroed.
+                        assert(mem.allEqual(u8, block_write.block.*, 0));
+                    }
                     block_write.block = undefined;
 
                     const _compaction = @fieldParentPtr(Compaction, @tagName(field), block_write);
@@ -350,15 +363,15 @@ pub fn CompactionType(
             }.callback;
 
             const block_write: *BlockWrite = &@field(compaction, @tagName(field));
-            if (block_write.writable) {
-                block_write.writable = false;
+            if (block_write.state == .writable) {
+                block_write.state = .writing;
 
                 compaction.io_start();
                 compaction.grid.write_block(
                     write_callback,
                     &block_write.write,
                     block_write.block,
-                    Table.block_address(block_write.block),
+                    Table.block_address(block_write.block.*),
                 );
             }
         }
@@ -405,9 +418,9 @@ pub fn CompactionType(
                 assert(!compaction.merge_iterator.?.empty());
             }
 
-            assert(!compaction.data.writable);
-            assert(!compaction.filter.writable);
-            assert(!compaction.index.writable);
+            assert(compaction.data.state == .building);
+            assert(compaction.filter.state == .building);
+            assert(compaction.index.state == .building);
 
             if (!compaction.merge_iterator.?.empty()) {
                 compaction.cpu_merge();
@@ -444,9 +457,9 @@ pub fn CompactionType(
             // Ensure there are values to merge and that is it safe to do so.
             const merge_iterator = &compaction.merge_iterator.?;
             assert(!merge_iterator.empty());
-            assert(!compaction.data.writable);
-            assert(!compaction.filter.writable);
-            assert(!compaction.index.writable);
+            assert(compaction.data.state == .building);
+            assert(compaction.filter.state == .building);
+            assert(compaction.index.state == .building);
 
             // Build up a data block with values merged from the read iterators.
             // This skips tombstone values if compaction was started with the intent to drop them.
@@ -469,9 +482,9 @@ pub fn CompactionType(
                 });
 
                 // Mark the finished data block as writable for the next compact_tick() call.
-                compaction.data.block = compaction.table_builder.data_block;
-                assert(!compaction.data.writable);
-                compaction.data.writable = true;
+                compaction.data.block = &compaction.table_builder.data_block;
+                assert(compaction.data.state == .building);
+                compaction.data.state = .writable;
             }
 
             // Finalize the filter block if it's full or if it contains pending data blocks
@@ -486,9 +499,9 @@ pub fn CompactionType(
                 });
 
                 // Mark the finished filter block as writable for the next compact_tick() call.
-                compaction.filter.block = compaction.table_builder.filter_block;
-                assert(!compaction.filter.writable);
-                compaction.filter.writable = true;
+                compaction.filter.block = &compaction.table_builder.filter_block;
+                assert(compaction.filter.state == .building);
+                compaction.filter.state = .writable;
             }
 
             // Finalize the index block if it's full or if it contains pending data blocks
@@ -506,9 +519,9 @@ pub fn CompactionType(
                 compaction.manifest.insert_table(compaction.level_b, &table);
 
                 // Mark the finished index block as writable for the next compact_tick() call.
-                compaction.index.block = compaction.table_builder.index_block;
-                assert(!compaction.index.writable);
-                compaction.index.writable = true;
+                compaction.index.block = &compaction.table_builder.index_block;
+                assert(compaction.index.state == .building);
+                compaction.index.state = .writable;
 
                 compaction.tables_output_count += 1;
                 assert(compaction.tables_output_count <= compaction.range.table_count);
@@ -524,9 +537,9 @@ pub fn CompactionType(
 
             // Ensure merging is truly finished.
             assert(compaction.merge_iterator.?.empty());
-            assert(!compaction.data.writable);
-            assert(!compaction.filter.writable);
-            assert(!compaction.index.writable);
+            assert(compaction.data.state == .building);
+            assert(compaction.filter.state == .building);
+            assert(compaction.index.state == .building);
 
             // Double check the iterators are finished as well.
             const stream_empty = struct {
