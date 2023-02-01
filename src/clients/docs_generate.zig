@@ -119,9 +119,13 @@ const Generator = struct {
     }
 
     fn run_with_file_in_docker(self: Generator, file: []const u8, to_run: []const u8, stdout: ?std.fs.File) !void {
+        // Delete the directory if it already exists.
+        std.fs.cwd().deleteTree("/tmp/wrk") catch {};
+        std.fs.cwd().makeDir("/tmp/wrk") catch {};
+
         var tmp_file_name = try std.fmt.allocPrint(
             self.allocator,
-            "/tmp/test.{s}",
+            "/tmp/wrk/test.{s}",
             .{self.language.extension},
         );
         var tmp_file = try std.fs.cwd().createFile(tmp_file_name, .{
@@ -132,19 +136,25 @@ const Generator = struct {
         var cmd = std.ArrayList(u8).init(self.allocator);
         defer cmd.deinit();
 
-        try cmd.writer().print("cd /tmp/wrk && {s} && {s}", .{
-            self.language.install_commands,
-            to_run,
-        });
+        try cmd.writer().print("cd /tmp/wrk", .{});
+        var splits = std.mem.split(u8, self.language.install_commands, "\n");
+        while (splits.next()) |chunk| {
+            try cmd.writer().print(" && {s}", .{chunk});
+        }
+
+        try cmd.writer().print(" && {s}", .{to_run});
 
         try self.run_in_docker(
             cmd.items,
-            "/tmp:/tmp/wrk",
+            "/tmp/wrk:/tmp/wrk",
             stdout,
         );
 
         tmp_file.close();
-        try std.fs.cwd().deleteFile(tmp_file_name);
+
+        // Don't delete the temp file so the parent calling this can
+        // use it if it wants. Cleanup always only happens in the
+        // beginning of the function.
     }
 
     fn build_file_in_docker(self: Generator, file: []const u8) !void {
@@ -184,24 +194,19 @@ const Generator = struct {
 
     fn make_and_format_aggregate_sample(self: Generator) ![]const u8 {
         var sample = try self.make_aggregate_sample();
-
-        var formatted_file_name = "/tmp/sample_file";
-        var formatted_file = try std.fs.cwd().createFile(formatted_file_name, .{
-            .truncate = true,
-        });
-
         try self.run_with_file_in_docker(
             sample,
-            try std.fmt.allocPrint(self.allocator, " ( {s} ) > /dev/null && cat /tmp/tests/test.{s}", .{
-                self.language.code_format_commands,
-                self.language.extension,
-            }),
-            formatted_file,
+            self.language.code_format_commands,
+            null,
         );
 
-        // Reopen for reading
-        formatted_file.close();
-        formatted_file = try std.fs.cwd().openFile(formatted_file_name, .{
+        // This is the place where run_with_file_in_docker places the file.
+        var formatted_file_name = try std.fmt.allocPrint(
+            self.allocator,
+            "/tmp/wrk/test.{s}",
+            .{self.language.extension},
+        );
+        var formatted_file = try std.fs.cwd().openFile(formatted_file_name, .{
             .read = true,
         });
 

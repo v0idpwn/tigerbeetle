@@ -242,6 +242,82 @@ for i := 0; i < len(transfers); i += BATCH_SIZE {
 
 ## Complete sample file
 
+```go
+package main
+
+import "log"
+
+import tb "github.com/tigerbeetledb/tigerbeetle-go"
+import tb_types "github.com/tigerbeetledb/tigerbeetle-go/pkg/types"
+
+func uint128(value string) tb_types.Uint128 {
+	x, err := tb_types.HexStringToUint128(value)
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+
+func main() {
+	client, err := tb.NewClient(0, []string{"3000"}, 1)
+	if err != nil {
+		log.Printf("Error creating client: %s", err)
+		return
+	}
+	defer client.Close()
+	// Create two accounts
+	accountsRes, err := client.CreateAccounts([]tb_types.Account{
+		{
+			ID:     uint128("1"),
+			Ledger: 1,
+			Code:   1,
+		},
+		{
+			ID:     uint128("2"),
+			Ledger: 1,
+			Code:   1,
+		},
+	})
+	if err != nil {
+		log.Printf("Error creating accounts: %s", err)
+		return
+	}
+
+	for _, err := range accountsRes {
+		log.Printf("Error creating account %d: %s", err.Index, err.Result)
+		return
+	}
+	accounts, err := client.LookupAccounts([]tb_types.Uint128{uint128("1"), uint128("2")})
+	if err != nil {
+		log.Printf("Could not fetch accounts: %s", err)
+		return
+	}
+	for _, account := range accounts {
+		log.Println(account)
+	}
+	transfer := tb_types.Transfer{
+		ID:              uint128("1"),
+		DebitAccountID:  uint128("1"),
+		CreditAccountID: uint128("2"),
+		Ledger:          1,
+		Code:            1,
+		Amount:          10,
+	}
+
+	transfersRes, err := client.CreateTransfers([]tb_types.Transfer{transfer})
+	if err != nil {
+		log.Printf("Error creating transfer batch: %s", err)
+		return
+	}
+
+	for _, err := range transfersRes {
+		log.Printf("Batch transfer at %d failed to create: %s", err.Index, err.Result)
+		return
+	}
+}
+
+```
+
 ## Development Setup
 
 ### On Linux and macOS
