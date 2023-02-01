@@ -94,6 +94,7 @@ const Generator = struct {
     language: Docs,
 
     fn run_in_docker(self: Generator, cmds: []const u8, mount: []const u8, stdout: ?std.fs.File) !void {
+        self.print(try std.fmt.allocPrint(self.allocator, "Running command in Docker: {s}", .{cmds}));
         var full_cmd = &[_][]const u8{
             "docker",
             "run",
@@ -105,7 +106,9 @@ const Generator = struct {
             cmds,
         };
         var cp = try std.ChildProcess.init(full_cmd, self.allocator);
-        cp.stdout = stdout;
+        if (stdout != null) {
+            cp.stdout = stdout;
+        }
         var res = try cp.spawnAndWait();
         switch (res) {
             .Exited => |code| {
@@ -165,12 +168,18 @@ const Generator = struct {
         );
     }
 
+    fn print(self: Generator, msg: []const u8) void {
+        std.debug.print("[{s}] {s}\n", .{self.language.markdown_name, msg});
+    }
+
     fn validate(self: Generator) !void {
         // Test the sample file
+        self.print("Building minimal sample file");
         try self.build_file_in_docker(self.language.install_sample_file);
 
-        // Test major sample code
+        // Test major parts of sample code
         var sample = try self.make_aggregate_sample();
+        self.print("Building aggregate sample file");
         try self.build_file_in_docker(sample);
     }
 
@@ -369,7 +378,25 @@ const Generator = struct {
 };
 
 pub fn main() !void {
-    for (languages) |language| {
+    var args = std.process.args();
+    var skipLanguage = [_]bool{false} ** languages.len;
+    while (args.nextPosix()) |arg| {
+        if (std.mem.eql(u8, arg, "--only")) {
+            var filter = args.nextPosix().?;
+            skipLanguage = [_]bool{true} ** languages.len;
+            for (languages) |language, i| {
+                if (std.mem.indexOf(u8, filter, language.markdown_name)) |_| {
+                    skipLanguage[i] = false;
+                }
+            }
+        }
+    }
+
+    for (languages) |language, i| {
+        if (skipLanguage[i]) {
+            continue;
+        }
+
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
 
@@ -378,8 +405,10 @@ pub fn main() !void {
         var mw = MarkdownWriter.init(&buf);
 
         var generator = Generator{ .allocator = allocator, .language = language };
+        generator.print("Validating");
         try generator.validate();
 
+        generator.print("Generating");
         try generator.generate(&mw);
     }
 }

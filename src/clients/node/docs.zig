@@ -193,7 +193,7 @@ pub const NodeDocs = Docs{
     ,
     .test_main_suffix = 
     \\}
-    \\main().then(() => process.exit(0)).catch((e) => throw e);
+    \\main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
     ,
     .code_format_commands = "npm install prettier && npx prettier --write .",
 };

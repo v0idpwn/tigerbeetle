@@ -22,6 +22,16 @@ To run the generator:
 $ ../../zig/zig run docs_generate.zig # ../../zig/zig to get the standard TigerBeetle Zig binary
 ```
 
+To run the generator only for a certain language (defined by `.markdown_name`):
+
+```console
+$ ../../zig/zig run docs_generate.zig -- --only javascript
+```
+
+```console
+$ ../../zig/zig run docs_generate.zig -- --only javascript,go
+```
+
 Docs are only regenerated/modified when there would be a diff so the
 mtime of each README changes only as needed.
 
