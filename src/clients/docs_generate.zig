@@ -169,7 +169,7 @@ const Generator = struct {
     }
 
     fn print(self: Generator, msg: []const u8) void {
-        std.debug.print("[{s}] {s}\n", .{self.language.markdown_name, msg});
+        std.debug.print("[{s}] {s}\n", .{ self.language.markdown_name, msg });
     }
 
     fn validate(self: Generator) !void {
