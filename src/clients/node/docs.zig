@@ -46,14 +46,14 @@ pub const NodeDocs = Docs{
     .examples = "",
     .no_batch_example = 
     \\for (let i = 0; i < transfers.len; i++) {
-    \\  const errors = client.createTransfers(transfers[i]);
+    \\  const transferErrors = client.createTransfers(transfers[i]);
     \\  // error handling omitted
     \\}
     ,
     .batch_example = 
     \\const BATCH_SIZE = 8191;
     \\for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
-    \\  const errors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
+    \\  const transferErrors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
     \\  // error handling omitted
     \\}
     ,
@@ -79,10 +79,10 @@ pub const NodeDocs = Docs{
     \\  timestamp: 0n, // u64, Reserved: This will be set by the server.
     \\};
     \\
-    \\const errors = await client.createAccounts([account]);
-    \\if (errors.length) {
+    \\const accountErrors = await client.createAccounts([account]);
+    \\if (accountErrors.length) {
     \\  // Grab a human-readable message from the response
-    \\  console.log(CreateAccountError[errors[0].code]);
+    \\  console.log(CreateAccountError[accountErrors[0].code]);
     \\}
     ,
     .create_accounts_documentation = "",
@@ -103,14 +103,14 @@ pub const NodeDocs = Docs{
     \\const account1 = { ... account values ... };
     \\account0.flags = AccountFlags.linked | AccountFlags.debits_must_not_exceed_credits;
     \\// Create the account
-    \\const errors = client.createAccounts([account0, account1]);
+    \\const accountErrors = client.createAccounts([account0, account1]);
     \\```
     ,
     .create_accounts_errors_example = 
-    \\const errors = await client.createAccounts([account1, account2, account3]);
+    \\const accountErrors = await client.createAccounts([account1, account2, account3]);
     \\
-    \\// errors = [{ index: 1, code: 1 }];
-    \\for (const error of errors) {
+    \\// accountErrors = [{ index: 1, code: 1 }];
+    \\for (const error of accountErrors) {
     \\  switch (error.code) {
     \\    case CreateAccountError.exists:
     \\      console.error(`Batch account at ${error.index} already exists.`);
@@ -153,8 +153,8 @@ pub const NodeDocs = Docs{
     \\  amount: 10n, // u64
     \\  timestamp: 0n, //u64, Reserved: This will be set by the server.
     \\};
-    \\const errors = await client.createTransfers([transfer]);
-    \\for (const error of errors) {
+    \\const transferErrors = await client.createTransfers([transfer]);
+    \\for (const error of transferErrors) {
     \\  switch (error.code) {
     \\    default:
     \\      console.error(`Batch transfer at ${error.index} failed to create: ${CreateAccountError[error.code]}.`);
@@ -163,10 +163,10 @@ pub const NodeDocs = Docs{
     ,
     .create_transfers_documentation = "",
     .create_transfers_errors_example = 
-    \\const errors = await client.createTransfers([transfer1, transfer2, transfer3]);
+    \\const transferErrors = await client.createTransfers([transfer1, transfer2, transfer3]);
     \\
-    \\// errors = [{ index: 1, code: 1 }];
-    \\for (const error of errors) {
+    \\// transferErrors = [{ index: 1, code: 1 }];
+    \\for (const error of transferErrors) {
     \\  switch (error.code) {
     \\    case CreateTransferError.exists:
     \\      console.error(`Batch transfer at ${error.index} already exists.`);

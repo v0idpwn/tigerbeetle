@@ -83,10 +83,10 @@ const account = {
   timestamp: 0n, // u64, Reserved: This will be set by the server.
 };
 
-const errors = await client.createAccounts([account]);
-if (errors.length) {
+const accountErrors = await client.createAccounts([account]);
+if (accountErrors.length) {
   // Grab a human-readable message from the response
-  console.log(CreateAccountError[errors[0].code]);
+  console.log(CreateAccountError[accountErrors[0].code]);
 }
 ```
 
@@ -112,7 +112,7 @@ const account0 = { ... account values ... };
 const account1 = { ... account values ... };
 account0.flags = AccountFlags.linked | AccountFlags.debits_must_not_exceed_credits;
 // Create the account
-const errors = client.createAccounts([account0, account1]);
+const accountErrors = client.createAccounts([account0, account1]);
 ```
 
 ### Response and Errors
@@ -128,10 +128,10 @@ See all error conditions in the [create_accounts
 reference](https://docs.tigerbeetle.com/reference/operations/create_accounts).
 
 ```javascript
-const errors = await client.createAccounts([account1, account2, account3]);
+const accountErrors = await client.createAccounts([account1, account2, account3]);
 
-// errors = [{ index: 1, code: 1 }];
-for (const error of errors) {
+// accountErrors = [{ index: 1, code: 1 }];
+for (const error of accountErrors) {
   switch (error.code) {
     case CreateAccountError.exists:
       console.error(`Batch account at ${error.index} already exists.`);
@@ -183,10 +183,10 @@ See all error conditions in the [create_transfers
 reference](https://docs.tigerbeetle.com/reference/operations/create_transfers).
 
 ```javascript
-const errors = await client.createTransfers([transfer1, transfer2, transfer3]);
+const transferErrors = await client.createTransfers([transfer1, transfer2, transfer3]);
 
-// errors = [{ index: 1, code: 1 }];
-for (const error of errors) {
+// transferErrors = [{ index: 1, code: 1 }];
+for (const error of transferErrors) {
   switch (error.code) {
     case CreateTransferError.exists:
       console.error(`Batch transfer at ${error.index} already exists.`);
@@ -215,7 +215,7 @@ one at a time like so:
 
 ```javascript
 for (let i = 0; i < transfers.len; i++) {
-  const errors = client.createTransfers(transfers[i]);
+  const transferErrors = client.createTransfers(transfers[i]);
   // error handling omitted
 }
 ```
@@ -229,12 +229,83 @@ is 8191.
 ```javascript
 const BATCH_SIZE = 8191;
 for (let i = 0; i < transfers.length; i += BATCH_SIZE) {
-  const errors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
+  const transferErrors = client.createTransfers(transfers.slice(i, Math.min(transfers.length, BATCH_SIZE)));
   // error handling omitted
 }
 ```
 
 ## Complete sample file
+
+```javascript
+const { createClient } = require("tigerbeetle-node");
+
+async function main() {
+  const client = createClient({
+    cluster_id: 0,
+    replica_addresses: ["3001", "3002", "3003"],
+  });
+  const account = {
+    id: 137n, // u128
+    user_data: 0n, // u128, opaque third-party identifier to link this account to an external entity:
+    reserved: Buffer.alloc(48, 0), // [48]u8
+    ledger: 1, // u32, ledger value
+    code: 718, // u16, a chart of accounts code describing the type of account (e.g. clearing, settlement)
+    flags: 0, // u16
+    debits_pending: 0n, // u64
+    debits_posted: 0n, // u64
+    credits_pending: 0n, // u64
+    credits_posted: 0n, // u64
+    timestamp: 0n, // u64, Reserved: This will be set by the server.
+  };
+
+  const accountErrors = await client.createAccounts([account]);
+  if (accountErrors.length) {
+    // Grab a human-readable message from the response
+    console.log(CreateAccountError[accountErrors[0].code]);
+  }
+  // account 137n exists, 138n does not
+  const accounts = await client.lookupAccounts([137n, 138n]);
+  console.log(accounts);
+  const transfer = {
+    id: 1n, // u128
+    pending_id: 0n, // u128
+    // Double-entry accounting:
+    debit_account_id: 1n, // u128
+    credit_account_id: 2n, // u128
+    // Opaque third-party identifier to link this transfer to an external entity:
+    user_data: 0n, // u128
+    reserved: 0n, // u128
+    // Timeout applicable for a pending/2-phase transfer:
+    timeout: 0n, // u64, in nano-seconds.
+    // Collection of accounts usually grouped by the currency:
+    // You can't transfer money between accounts with different ledgers:
+    ledger: 1, // u32, ledger for transfer (e.g. currency).
+    // Chart of accounts code describing the reason for the transfer:
+    code: 720, // u16, (e.g. deposit, settlement)
+    flags: 0, // u16
+    amount: 10n, // u64
+    timestamp: 0n, //u64, Reserved: This will be set by the server.
+  };
+  const transferErrors = await client.createTransfers([transfer]);
+  for (const error of transferErrors) {
+    switch (error.code) {
+      default:
+        console.error(
+          `Batch transfer at ${error.index} failed to create: ${
+            CreateAccountError[error.code]
+          }.`
+        );
+    }
+  }
+}
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+
+```
 
 ## Development Setup
 
