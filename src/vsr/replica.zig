@@ -154,10 +154,6 @@ pub fn ReplicaType(
         // Also verify that a corresponding header exists in the WAL.
         op: u64,
 
-        /// The op of the highest checkpointed message.
-        // TODO Refuse to store/ack any op>op_checkpoint+journal_slot_count.
-        op_checkpoint: u64,
-
         /// The op number of the latest committed and executed operation (according to the replica):
         /// The replica may have to wait for repairs to complete before commit_min reaches commit_max.
         ///
@@ -551,7 +547,6 @@ pub fn ReplicaType(
                 .view = self.superblock.working.vsr_state.view,
                 .log_view = self.superblock.working.vsr_state.log_view,
                 .op = 0,
-                .op_checkpoint = self.superblock.working.vsr_state.commit_min,
                 .commit_min = self.superblock.working.vsr_state.commit_min,
                 .commit_max = self.superblock.working.vsr_state.commit_max,
                 .pipeline = .{ .cache = .{} },
@@ -771,6 +766,12 @@ pub fn ReplicaType(
             tracer.flush();
         }
 
+        // Pings are used:
+        //  - By clients, to learn about the current view.
+        //  - By replicas, to synchronise cluster time and to probe for network connectivity.
+        //
+        // In the second case we avoid setting the view to make sure pings can still be sent
+        // during view changes.
         fn on_ping(self: *Self, message: *const Message) void {
             if (self.status != .normal and self.status != .view_change) return;
 
@@ -782,7 +783,6 @@ pub fn ReplicaType(
                 .command = .pong,
                 .cluster = self.cluster,
                 .replica = self.replica,
-                .view = self.view,
             };
 
             if (message.header.client > 0) {
@@ -795,21 +795,28 @@ pub fn ReplicaType(
                 // a newer view number, locking out the client. The principle here is that we must
                 // never send view numbers for views that have not yet started.
                 if (self.status == .normal) {
+                    pong.view = self.view;
                     self.send_header_to_client(message.header.client, pong);
                 }
-            } else if (message.header.replica == self.replica) {
-                log.warn("{}: on_ping: ignoring (self)", .{self.replica});
             } else {
-                // Copy the ping's monotonic timestamp to our pong and add our wall clock sample:
-                pong.op = message.header.op;
-                pong.timestamp = @bitCast(u64, self.clock.realtime());
-                self.send_header_to_replica(message.header.replica, pong);
+                assert(message.header.view == 0);
+
+                if (message.header.replica == self.replica) {
+                    log.warn("{}: on_ping: ignoring (self)", .{self.replica});
+                } else {
+                    // Copy the ping's monotonic timestamp to our pong and add our wall clock sample:
+                    pong.op = message.header.op;
+                    pong.timestamp = @bitCast(u64, self.clock.realtime());
+                    self.send_header_to_replica(message.header.replica, pong);
+                }
             }
         }
 
         fn on_pong(self: *Self, message: *const Message) void {
             if (message.header.client > 0) return;
             if (message.header.replica == self.replica) return;
+
+            assert(message.header.view == 0);
 
             const m0 = message.header.op;
             const t1 = @bitCast(i64, message.header.timestamp);
@@ -909,7 +916,7 @@ pub fn ReplicaType(
                 log.debug("{}: on_prepare: ignoring op={} (too far ahead, checkpoint={})", .{
                     self.replica,
                     message.header.op,
-                    self.op_checkpoint,
+                    self.op_checkpoint(),
                 });
                 // When we are the primary, `on_request` enforces this invariant.
                 assert(self.backup());
@@ -920,7 +927,7 @@ pub fn ReplicaType(
             assert(message.header.view == self.view);
             assert(self.primary() or self.backup());
             assert(message.header.replica == self.primary_index(message.header.view));
-            assert(message.header.op > self.op_checkpoint);
+            assert(message.header.op > self.op_checkpoint());
             assert(message.header.op > self.op);
             assert(message.header.op > self.commit_min);
             assert(message.header.op <= self.op_checkpoint_trigger());
@@ -991,7 +998,7 @@ pub fn ReplicaType(
             // TODO: When Block recover & state transfer are implemented, this can be removed.
             const threshold =
                 if (prepare.message.header.op == self.op_checkpoint_trigger() or
-                prepare.message.header.op == self.op_checkpoint + constants.lsm_batch_multiple + 1)
+                prepare.message.header.op == self.op_checkpoint() + constants.lsm_batch_multiple + 1)
                 self.replica_count
             else
                 self.quorum_replication;
@@ -1637,7 +1644,6 @@ pub fn ReplicaType(
                 .command = .ping,
                 .cluster = self.cluster,
                 .replica = self.replica,
-                .view = self.view,
                 .op = self.clock.monotonic(),
             };
 
@@ -2285,8 +2291,8 @@ pub fn ReplicaType(
             const self = @fieldParentPtr(Self, "state_machine", state_machine);
             assert(self.committing);
             assert(self.commit_callback != null);
-            assert(self.op_checkpoint == self.superblock.staging.vsr_state.commit_min);
-            assert(self.op_checkpoint == self.superblock.working.vsr_state.commit_min);
+            assert(self.op_checkpoint() == self.superblock.staging.vsr_state.commit_min);
+            assert(self.op_checkpoint() == self.superblock.working.vsr_state.commit_min);
 
             const op = self.commit_prepare.?.header.op;
             assert(op == self.commit_min);
@@ -2301,7 +2307,7 @@ pub fn ReplicaType(
                     "(op={} current_checkpoint={} next_checkpoint={})", .{
                     self.replica,
                     self.op,
-                    self.op_checkpoint,
+                    self.op_checkpoint(),
                     self.op_checkpoint_next(),
                 });
                 tracer.start(
@@ -2354,15 +2360,14 @@ pub fn ReplicaType(
             assert(self.commit_prepare.?.header.op == self.op);
             assert(self.commit_prepare.?.header.op == self.commit_min);
 
-            self.op_checkpoint = self.op_checkpoint_next();
-            assert(self.op_checkpoint == self.commit_min - constants.lsm_batch_multiple);
-            assert(self.op_checkpoint == self.superblock.staging.vsr_state.commit_min);
-            assert(self.op_checkpoint == self.superblock.working.vsr_state.commit_min);
+            assert(self.op_checkpoint() == self.commit_min - constants.lsm_batch_multiple);
+            assert(self.op_checkpoint() == self.superblock.staging.vsr_state.commit_min);
+            assert(self.op_checkpoint() == self.superblock.working.vsr_state.commit_min);
 
             log.debug("{}: commit_op_compact_callback: checkpoint done (op={} new_checkpoint={})", .{
                 self.replica,
                 self.op,
-                self.op_checkpoint,
+                self.op_checkpoint(),
             });
             tracer.end(
                 &self.tracer_slot_checkpoint,
@@ -2413,7 +2418,7 @@ pub fn ReplicaType(
             // this commit.
 
             assert(self.journal.has(prepare.header));
-            if (self.op_checkpoint == self.commit_min) {
+            if (self.op_checkpoint() == self.commit_min) {
                 // op_checkpoint's slot may have been overwritten in the WAL — but we can
                 // always use the VSRState to anchor the hash chain.
                 assert(prepare.header.parent ==
@@ -2482,7 +2487,7 @@ pub fn ReplicaType(
             if (self.superblock.working.vsr_state.op_compacted(prepare.header.op)) {
                 // We are recovering from a checkpoint. Prior to the crash, the client table was
                 // updated with entries for one bar beyond the op_checkpoint.
-                assert(self.op_checkpoint == self.superblock.working.vsr_state.commit_min);
+                assert(self.op_checkpoint() == self.superblock.working.vsr_state.commit_min);
                 if (self.client_table().get(prepare.header.client)) |entry| {
                     assert(entry.reply.header.command == .reply);
                     assert(entry.reply.header.op >= prepare.header.op);
@@ -2493,7 +2498,7 @@ pub fn ReplicaType(
                 log.debug("{}: commit_op: skip client table update: prepare.op={} checkpoint={}", .{
                     self.replica,
                     prepare.header.op,
-                    self.op_checkpoint,
+                    self.op_checkpoint(),
                 });
             } else {
                 if (reply.header.operation == .register) {
@@ -2900,7 +2905,11 @@ pub fn ReplicaType(
         /// The caller owns the returned message, if any, which has exactly 1 reference.
         fn create_message_from_header(self: *Self, header: Header) *Message {
             assert(header.replica == self.replica);
-            assert(header.view == self.view or header.command == .request_start_view);
+            assert(
+                header.view == self.view or
+                    header.command == .request_start_view or
+                    header.command == .pong or header.command == .ping,
+            );
             assert(header.size == @sizeOf(Header));
 
             const message = self.message_bus.pool.get_message();
@@ -3125,7 +3134,7 @@ pub fn ReplicaType(
                 log.debug("{}: on_request: ignoring op={} (too far ahead, checkpoint_trigger={})", .{
                     self.replica,
                     self.op + 1,
-                    self.op_checkpoint,
+                    self.op_checkpoint(),
                 });
                 return true;
             }
@@ -3432,9 +3441,9 @@ pub fn ReplicaType(
         ///              (`replica.op_checkpoint` == `replica.op`).
         fn op_head_certain(self: *const Self) bool {
             assert(self.status == .recovering);
-            assert(self.op_checkpoint <= self.op);
+            assert(self.op_checkpoint() <= self.op);
 
-            const slot_op_checkpoint = self.journal.slot_for_op(self.op_checkpoint);
+            const slot_op_checkpoint = self.journal.slot_for_op(self.op_checkpoint());
             const slot_op_head = self.journal.slot_with_op(self.op).?;
             const slot_known_range = vsr.SlotRange{
                 .head = slot_op_checkpoint,
@@ -3450,6 +3459,12 @@ pub fn ReplicaType(
                 }
             }
             return true;
+        }
+
+        /// The op of the highest checkpointed message.
+        // TODO Refuse to store/ack any op>op_checkpoint+journal_slot_count.
+        pub fn op_checkpoint(self: *const Self) u64 {
+            return self.superblock.working.vsr_state.commit_min;
         }
 
         /// Returns the op that will be `op_checkpoint` after the next checkpoint.
@@ -3476,21 +3491,21 @@ pub fn ReplicaType(
         ///     %  op_checkpoint_trigger
         ///
         fn op_checkpoint_next(self: *const Self) u64 {
-            assert(self.op_checkpoint <= self.commit_min);
-            assert(self.op_checkpoint <= self.op);
-            assert(self.op_checkpoint == 0 or
-                (self.op_checkpoint + 1) % constants.lsm_batch_multiple == 0);
+            assert(self.op_checkpoint() <= self.commit_min);
+            assert(self.op_checkpoint() <= self.op);
+            assert(self.op_checkpoint() == 0 or
+                (self.op_checkpoint() + 1) % constants.lsm_batch_multiple == 0);
 
-            const op = if (self.op_checkpoint == 0)
+            const op = if (self.op_checkpoint() == 0)
                 // First wrap: op_checkpoint_next = 8-2-1 = 5
                 constants.journal_slot_count - constants.lsm_batch_multiple - 1
             else
                 // Second wrap: op_checkpoint_next = 5+8-2 = 11
                 // Third wrap: op_checkpoint_next = 11+8-2 = 17
-                self.op_checkpoint + constants.journal_slot_count - constants.lsm_batch_multiple;
+                self.op_checkpoint() + constants.journal_slot_count - constants.lsm_batch_multiple;
             assert((op + 1) % constants.lsm_batch_multiple == 0);
             // The checkpoint always advances.
-            assert(op > self.op_checkpoint);
+            assert(op > self.op_checkpoint());
 
             return op;
         }
@@ -3649,8 +3664,8 @@ pub fn ReplicaType(
             assert(self.status == .normal or self.status == .view_change);
             assert(self.repairs_allowed());
 
-            assert(self.op_checkpoint <= self.op);
-            assert(self.op_checkpoint <= self.commit_min);
+            assert(self.op_checkpoint() <= self.op);
+            assert(self.op_checkpoint() <= self.commit_min);
             assert(self.commit_min <= self.op);
             assert(self.commit_min <= self.commit_max);
             assert(self.journal.header_with_op(self.op) != null);
@@ -3821,8 +3836,8 @@ pub fn ReplicaType(
                 return false;
             }
 
-            if (header.op <= self.op_checkpoint) {
-                if (header.op == 0 and self.op_checkpoint == 0) {
+            if (header.op <= self.op_checkpoint()) {
+                if (header.op == 0 and self.op_checkpoint() == 0) {
                     // Repairing the root op is allowed until the first checkpoint.
                 } else {
                     // It is critical that we do not repair checkpointed ops; their slots now belong
@@ -3830,7 +3845,7 @@ pub fn ReplicaType(
                     // correctness violation.
                     log.debug("{}: repair_header: false (precedes self.op_checkpoint={})", .{
                         self.replica,
-                        self.op_checkpoint,
+                        self.op_checkpoint(),
                     });
                     return false;
                 }
@@ -4180,7 +4195,7 @@ pub fn ReplicaType(
                         // belong) to a newer op, from the new WAL wrap. Additionally, we may not
                         // still have access to its surrounding commits to verify the hash chain.
                         assert(op <= self.commit_min);
-                        assert(op <= self.op_checkpoint);
+                        assert(op <= self.op_checkpoint());
                         assert(self.journal.faulty.bit(slot));
 
                         log.debug("{}: repair_prepares: remove slot={} " ++
@@ -4388,7 +4403,7 @@ pub fn ReplicaType(
         /// Replaces the header if the header is different and not already committed.
         /// The caller must ensure that the header is trustworthy.
         fn replace_header(self: *Self, header: *const Header) void {
-            assert(self.op_checkpoint <= self.commit_min);
+            assert(self.op_checkpoint() <= self.commit_min);
             assert(header.command == .prepare);
             assert(header.op <= self.op); // Never advance the op.
             assert(header.op <= self.op_checkpoint_trigger());
@@ -4398,7 +4413,7 @@ pub fn ReplicaType(
                     assert(existing_header.checksum == header.checksum);
                     return;
                 } else {
-                    if (header.op <= self.op_checkpoint) {
+                    if (header.op <= self.op_checkpoint()) {
                         // Never replace a checkpointed op — those slots are needed by the following
                         // WAL wrap.
                         return;
@@ -4763,7 +4778,7 @@ pub fn ReplicaType(
                     assert(message.header.replica != replica);
                 },
                 .ping, .pong => {
-                    assert(message.header.view == self.view);
+                    assert(message.header.view == 0);
                     assert(message.header.replica == self.replica);
                     assert(message.header.replica != replica);
                 },
@@ -4810,6 +4825,11 @@ pub fn ReplicaType(
                 if (message.header.view > self.view_durable() and
                     message.header.command != .request_start_view)
                 {
+                    // Pings are used for syncing time, so they must not be
+                    // blocked on persisting view.
+                    assert(message.header.command != .ping);
+                    assert(message.header.command != .pong);
+
                     log.debug("{}: send_message_to_replica: dropped {s} " ++
                         "(view_durable={} message.view={})", .{
                         self.replica,
@@ -5138,7 +5158,7 @@ pub fn ReplicaType(
             const header_head = headers_canonical.next().?;
             assert(header_head.op == header_head.op);
             assert(header_head.op >= do_view_change_commit_min_max);
-            assert(header_head.op >= self.op_checkpoint);
+            assert(header_head.op >= self.op_checkpoint());
             assert(header_head.op >= self.commit_min);
             assert(header_head.op >= self.commit_max);
 
@@ -5262,7 +5282,7 @@ pub fn ReplicaType(
 
         fn transition_to_recovering_head(self: *Self) void {
             assert(self.status == .recovering);
-            assert(self.view >= self.log_view);
+            assert(self.view == self.log_view);
             assert(self.op >= self.commit_min);
             assert(!self.committing);
             assert(self.replica_count > 1);
@@ -5273,7 +5293,7 @@ pub fn ReplicaType(
 
             log.warn("{}: transition_to_recovering_head: op_checkpoint={} op_head={}", .{
                 self.replica,
-                self.op_checkpoint,
+                self.op_checkpoint(),
                 self.op,
             });
         }
@@ -5521,7 +5541,7 @@ pub fn ReplicaType(
         fn valid_hash_chain_between(self: *const Self, op_min: u64, op_max: u64) bool {
             assert(op_min <= op_max);
             // Headers with ops preceding the checkpoint may be unavailable due to a WAL wrap.
-            assert(op_min >= self.op_checkpoint);
+            assert(op_min >= self.op_checkpoint());
 
             // If we use anything less than self.op then we may commit ops for a forked hash chain
             // that have since been reordered by a new primary.
@@ -5532,7 +5552,7 @@ pub fn ReplicaType(
             while (op > op_min) {
                 op -= 1;
 
-                if (self.op_checkpoint == op) {
+                if (self.op_checkpoint() == op) {
                     // op_checkpoint's slot may have been overwritten in the WAL — but we can
                     // always use the VSRState to anchor the hash chain.
                     assert(op == op_min);
@@ -5543,7 +5563,7 @@ pub fn ReplicaType(
                         log.debug("{}: valid_hash_chain_between: break A: {} (checkpoint={})", .{
                             self.replica,
                             self.superblock.working.vsr_state.commit_min_checksum,
-                            self.op_checkpoint,
+                            self.op_checkpoint(),
                         });
                         log.debug("{}: valid_hash_chain_between: break B: {}", .{
                             self.replica,
@@ -5656,10 +5676,10 @@ pub fn ReplicaType(
             assert(message.header.view <= self.view);
             assert(message.header.op <= self.op);
 
-            if (message.header.op == self.op_checkpoint) {
+            if (message.header.op == self.op_checkpoint()) {
                 assert(message.header.op == 0);
             } else {
-                assert(message.header.op > self.op_checkpoint);
+                assert(message.header.op > self.op_checkpoint());
             }
 
             if (!self.journal.has(message.header)) {
