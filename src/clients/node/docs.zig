@@ -15,10 +15,12 @@ pub const NodeDocs = Docs{
     \\> Your operating system should be Linux (kernel >= v5.6) or macOS.
     \\> Windows support is not yet available.
     ,
+
     .install_sample_file = 
     \\const { createClient } = require("tigerbeetle-node");
     \\console.log("Import ok!");
     ,
+
     .install_sample_file_build_commands = "npm install typescript @types/node && npx tsc --allowJs --noEmit test.js",
     .install_sample_file_test_commands = "node run test.js",
     .install_commands = "npm install tigerbeetle-node",

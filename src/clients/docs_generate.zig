@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 
 const Docs = @import("./docs_types.zig").Docs;
@@ -95,6 +96,7 @@ const Generator = struct {
 
     fn run_in_docker(self: Generator, cmds: []const u8, mount: []const u8, stdout: ?std.fs.File) !void {
         self.print(try std.fmt.allocPrint(self.allocator, "Running command in Docker: {s}", .{cmds}));
+
         var full_cmd = &[_][]const u8{
             "docker",
             "run",
@@ -105,6 +107,7 @@ const Generator = struct {
             "-c",
             cmds,
         };
+        std.debug.print("{?}\n", .{full_cmd});
         var cp = try std.ChildProcess.init(full_cmd, self.allocator);
         if (stdout != null) {
             cp.stdout = stdout;
@@ -140,9 +143,10 @@ const Generator = struct {
         defer cmd.deinit();
 
         try cmd.writer().print("cd /tmp/wrk", .{});
-        var splits = std.mem.split(u8, self.language.install_commands, "\n");
-        while (splits.next()) |chunk| {
-            try cmd.writer().print(" && {s}", .{chunk});
+
+        var install_lines = std.mem.split(u8, self.language.install_commands, "\n");
+        while (install_lines.next()) |line| {
+            try cmd.writer().print(" && {s}", .{line});
         }
 
         try cmd.writer().print(" && {s}", .{to_run});
